@@ -65,7 +65,7 @@ struct mac802154_wpan_mib {
 
 	/* MAC BSN field */
 	u8 bsn;
-	/* MAC BSN field */
+	/* MAC DSN field */
 	u8 dsn;
 };
 
