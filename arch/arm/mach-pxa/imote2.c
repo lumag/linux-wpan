@@ -79,7 +79,7 @@ static unsigned long imote2_pin_config[] __initdata = {
 	GPIO118_I2C_SDA,
 
 	/* SSP 3 - 802.15.4 radio */
-	GPIO39_GPIO, 			/* Chip Select */
+	GPIO39_GPIO,			/* Chip Select */
 	GPIO34_SSP3_SCLK,
 	GPIO35_SSP3_TXD,
 	GPIO41_SSP3_RXD,
@@ -576,10 +576,6 @@ static void __init imote2_init(void)
 	pxa_set_ffuart_info(NULL);
 	pxa_set_btuart_info(NULL);
 	pxa_set_stuart_info(NULL);
-
-	/* SPI chip select directions - all other directions should
-	 * be handled by drivers.*/
-	gpio_direction_output(37, 0);
 
 	platform_add_devices(imote2_devices, ARRAY_SIZE(imote2_devices));
 

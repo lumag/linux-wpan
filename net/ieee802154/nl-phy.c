@@ -23,6 +23,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/if_arp.h>
 #include <net/netlink.h>
 #include <net/genetlink.h>
