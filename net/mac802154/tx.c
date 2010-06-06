@@ -71,7 +71,7 @@ netdev_tx_t ieee802154_tx(struct ieee802154_priv *priv, struct sk_buff *skb,
 	struct xmit_work *work;
 
 	if (WARN_ON(!(priv->phy->channels_supported[page] &
-					(chan))))
+					(1 << chan))))
 		return NETDEV_TX_OK;
 
 	if (!(priv->hw.flags & IEEE802154_HW_OMIT_CKSUM)) {
