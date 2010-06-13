@@ -102,6 +102,9 @@ struct ieee802154_priv *ieee802154_slave_get_priv(struct net_device *dev);
 void ieee802154_monitors_rx(struct ieee802154_priv *priv, struct sk_buff *skb);
 void ieee802154_monitor_setup(struct net_device *dev);
 
+void ieee802154_smacs_rx(struct ieee802154_priv *priv, struct sk_buff *skb);
+void ieee802154_smac_setup(struct net_device *dev);
+
 void ieee802154_wpans_rx(struct ieee802154_priv *priv, struct sk_buff *skb);
 void ieee802154_wpan_setup(struct net_device *dev);
 

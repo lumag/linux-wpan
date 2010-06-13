@@ -55,6 +55,7 @@ static void ieee802154_subif_rx(struct ieee802154_dev *hw, struct sk_buff *skb)
 	}
 
 	ieee802154_monitors_rx(priv, skb);
+	ieee802154_smacs_rx(priv, skb);
 	ieee802154_wpans_rx(priv, skb);
 
 out:
