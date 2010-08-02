@@ -30,9 +30,9 @@
 
 #include "mac802154.h"
 
-static netdev_tx_t ieee802154_monitor_xmit(struct sk_buff *skb, struct net_device *dev)
+static netdev_tx_t mac802154_monitor_xmit(struct sk_buff *skb, struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *priv;
+	struct mac802154_sub_if_data *priv;
 	u8 chan, page;
 
 	priv = netdev_priv(dev);
@@ -51,14 +51,14 @@ static netdev_tx_t ieee802154_monitor_xmit(struct sk_buff *skb, struct net_devic
 	dev->stats.tx_packets++;
 	dev->stats.tx_bytes += skb->len;
 
-	return ieee802154_tx(priv->hw, skb, page, chan);
+	return mac802154_tx(priv->hw, skb, page, chan);
 }
 
 
-void ieee802154_monitors_rx(struct ieee802154_priv *priv, struct sk_buff *skb)
+void mac802154_monitors_rx(struct mac802154_priv *priv, struct sk_buff *skb)
 {
 	struct sk_buff *skb2;
-	struct ieee802154_sub_if_data *sdata;
+	struct mac802154_sub_if_data *sdata;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(sdata, &priv->slaves, list) {
@@ -77,15 +77,15 @@ void ieee802154_monitors_rx(struct ieee802154_priv *priv, struct sk_buff *skb)
 	rcu_read_unlock();
 }
 
-static const struct net_device_ops ieee802154_monitor_ops = {
-	.ndo_open		= ieee802154_slave_open,
-	.ndo_stop		= ieee802154_slave_close,
-	.ndo_start_xmit		= ieee802154_monitor_xmit,
+static const struct net_device_ops mac802154_monitor_ops = {
+	.ndo_open		= mac802154_slave_open,
+	.ndo_stop		= mac802154_slave_close,
+	.ndo_start_xmit		= mac802154_monitor_xmit,
 };
 
-void ieee802154_monitor_setup(struct net_device *dev)
+void mac802154_monitor_setup(struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *priv;
+	struct mac802154_sub_if_data *priv;
 
 	dev->addr_len		= 0;
 	dev->features		= NETIF_F_NO_CSUM;
@@ -98,7 +98,7 @@ void ieee802154_monitor_setup(struct net_device *dev)
 	dev->watchdog_timeo	= 0;
 
 	dev->destructor		= free_netdev;
-	dev->netdev_ops		= &ieee802154_monitor_ops;
+	dev->netdev_ops		= &mac802154_monitor_ops;
 
 	priv = netdev_priv(dev);
 	priv->type = IEEE802154_DEV_MONITOR;

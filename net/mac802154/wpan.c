@@ -39,9 +39,9 @@
 #include "mac802154.h"
 #include "mib.h"
 
-static netdev_tx_t ieee802154_wpan_xmit(struct sk_buff *skb, struct net_device *dev)
+static netdev_tx_t mac802154_wpan_xmit(struct sk_buff *skb, struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *priv;
+	struct mac802154_sub_if_data *priv;
 	u8 chan, page;
 
 	priv = netdev_priv(dev);
@@ -61,13 +61,13 @@ static netdev_tx_t ieee802154_wpan_xmit(struct sk_buff *skb, struct net_device *
 	dev->stats.tx_packets++;
 	dev->stats.tx_bytes += skb->len;
 
-	return ieee802154_tx(priv->hw, skb, page, chan);
+	return mac802154_tx(priv->hw, skb, page, chan);
 }
 
-static int ieee802154_wpan_ioctl(struct net_device *dev, struct ifreq *ifr,
+static int mac802154_wpan_ioctl(struct net_device *dev, struct ifreq *ifr,
 		int cmd)
 {
-	struct ieee802154_sub_if_data *priv = netdev_priv(dev);
+	struct mac802154_sub_if_data *priv = netdev_priv(dev);
 	struct sockaddr_ieee802154 *sa =
 		(struct sockaddr_ieee802154 *)&ifr->ifr_addr;
 	int err = -ENOIOCTLCMD;
@@ -110,7 +110,7 @@ static int ieee802154_wpan_ioctl(struct net_device *dev, struct ifreq *ifr,
 	return err;
 }
 
-static int ieee802154_wpan_mac_addr(struct net_device *dev, void *p)
+static int mac802154_wpan_mac_addr(struct net_device *dev, void *p)
 {
 	struct sockaddr *addr = p;
 
@@ -118,18 +118,18 @@ static int ieee802154_wpan_mac_addr(struct net_device *dev, void *p)
 		return -EBUSY;
 	/* FIXME: validate addr */
 	memcpy(dev->dev_addr, addr->sa_data, dev->addr_len);
-	ieee802154_dev_set_ieee_addr(dev);
+	mac802154_dev_set_ieee_addr(dev);
 	return 0;
 }
 
-static void ieee802154_haddr_copy_swap(u8 *dest, const u8 *src)
+static void mac802154_haddr_copy_swap(u8 *dest, const u8 *src)
 {
 	int i;
 	for (i = 0; i < IEEE802154_ADDR_LEN; i++)
 		dest[IEEE802154_ADDR_LEN - i - 1] = src[i];
 }
 
-static int ieee802154_header_create(struct sk_buff *skb,
+static int mac802154_header_create(struct sk_buff *skb,
 			   struct net_device *dev,
 			   unsigned short type, const void *_daddr,
 			   const void *_saddr, unsigned len)
@@ -141,7 +141,7 @@ static int ieee802154_header_create(struct sk_buff *skb,
 	const struct ieee802154_addr *saddr = _saddr;
 	const struct ieee802154_addr *daddr = _daddr;
 	struct ieee802154_addr dev_addr;
-	struct ieee802154_sub_if_data *priv = netdev_priv(dev);
+	struct mac802154_sub_if_data *priv = netdev_priv(dev);
 
 	fc = mac_cb_type(skb);
 	if (mac_cb_is_ackreq(skb))
@@ -183,7 +183,7 @@ static int ieee802154_header_create(struct sk_buff *skb,
 			head[pos++] = daddr->short_addr & 0xff;
 			head[pos++] = daddr->short_addr >> 8;
 		} else {
-			ieee802154_haddr_copy_swap(head + pos, daddr->hwaddr);
+			mac802154_haddr_copy_swap(head + pos, daddr->hwaddr);
 			pos += IEEE802154_ADDR_LEN;
 		}
 	}
@@ -204,7 +204,7 @@ static int ieee802154_header_create(struct sk_buff *skb,
 			head[pos++] = saddr->short_addr & 0xff;
 			head[pos++] = saddr->short_addr >> 8;
 		} else {
-			ieee802154_haddr_copy_swap(head + pos, saddr->hwaddr);
+			mac802154_haddr_copy_swap(head + pos, saddr->hwaddr);
 			pos += IEEE802154_ADDR_LEN;
 		}
 	}
@@ -217,7 +217,7 @@ static int ieee802154_header_create(struct sk_buff *skb,
 	return pos;
 }
 
-static int ieee802154_header_parse(const struct sk_buff *skb,
+static int mac802154_header_parse(const struct sk_buff *skb,
 		unsigned char *haddr)
 {
 	const u8 *hdr = skb_mac_header(skb), *tail = skb_tail_pointer(skb);
@@ -286,7 +286,7 @@ static int ieee802154_header_parse(const struct sk_buff *skb,
 
 		if (hdr + IEEE802154_ADDR_LEN > tail)
 			goto malformed;
-		ieee802154_haddr_copy_swap(addr->hwaddr, hdr);
+		mac802154_haddr_copy_swap(addr->hwaddr, hdr);
 		hdr += IEEE802154_ADDR_LEN;
 		break;
 
@@ -316,28 +316,28 @@ malformed:
 	return 0;
 }
 
-static struct header_ops ieee802154_header_ops = {
-	.create		= ieee802154_header_create,
-	.parse		= ieee802154_header_parse,
+static struct header_ops mac802154_header_ops = {
+	.create		= mac802154_header_create,
+	.parse		= mac802154_header_parse,
 };
 
-static const struct net_device_ops ieee802154_wpan_ops = {
-	.ndo_open		= ieee802154_slave_open,
-	.ndo_stop		= ieee802154_slave_close,
-	.ndo_start_xmit		= ieee802154_wpan_xmit,
-	.ndo_do_ioctl		= ieee802154_wpan_ioctl,
-	.ndo_set_mac_address	= ieee802154_wpan_mac_addr,
+static const struct net_device_ops mac802154_wpan_ops = {
+	.ndo_open		= mac802154_slave_open,
+	.ndo_stop		= mac802154_slave_close,
+	.ndo_start_xmit		= mac802154_wpan_xmit,
+	.ndo_do_ioctl		= mac802154_wpan_ioctl,
+	.ndo_set_mac_address	= mac802154_wpan_mac_addr,
 };
 
-void ieee802154_wpan_setup(struct net_device *dev)
+void mac802154_wpan_setup(struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *priv;
+	struct mac802154_sub_if_data *priv;
 
 	dev->addr_len		= IEEE802154_ADDR_LEN;
 	memset(dev->broadcast, 0xff, IEEE802154_ADDR_LEN);
 	dev->features		= NETIF_F_NO_CSUM;
 	dev->hard_header_len	= 2 + 1 + 20 + 14;
-	dev->header_ops		= &ieee802154_header_ops;
+	dev->header_ops		= &mac802154_header_ops;
 	dev->needed_tailroom	= 2; /* FCS */
 	dev->mtu		= 127;
 	dev->tx_queue_len	= 10;
@@ -346,7 +346,7 @@ void ieee802154_wpan_setup(struct net_device *dev)
 	dev->watchdog_timeo	= 0;
 
 	dev->destructor		= free_netdev;
-	dev->netdev_ops		= &ieee802154_wpan_ops;
+	dev->netdev_ops		= &mac802154_wpan_ops;
 	dev->ml_priv		= &mac802154_mlme;
 
 	priv = netdev_priv(dev);
@@ -364,7 +364,7 @@ void ieee802154_wpan_setup(struct net_device *dev)
 	priv->short_addr = IEEE802154_ADDR_BROADCAST;
 }
 
-static int ieee802154_process_ack(struct net_device *dev, struct sk_buff *skb)
+static int mac802154_process_ack(struct net_device *dev, struct sk_buff *skb)
 {
 	pr_debug("got ACK for SEQ=%d\n", mac_cb(skb)->seq);
 
@@ -372,7 +372,7 @@ static int ieee802154_process_ack(struct net_device *dev, struct sk_buff *skb)
 	return NET_RX_SUCCESS;
 }
 
-static int ieee802154_process_data(struct net_device *dev, struct sk_buff *skb)
+static int mac802154_process_data(struct net_device *dev, struct sk_buff *skb)
 {
 	if (in_interrupt())
 		return netif_rx(skb);
@@ -380,7 +380,7 @@ static int ieee802154_process_data(struct net_device *dev, struct sk_buff *skb)
 		return netif_rx_ni(skb);
 }
 
-static int ieee802154_subif_frame(struct ieee802154_sub_if_data *sdata,
+static int mac802154_subif_frame(struct mac802154_sub_if_data *sdata,
 		struct sk_buff *skb)
 {
 	pr_debug("%s Getting packet via slave interface %s\n",
@@ -432,13 +432,13 @@ static int ieee802154_subif_frame(struct ieee802154_sub_if_data *sdata,
 
 	switch (mac_cb_type(skb)) {
 	case IEEE802154_FC_TYPE_BEACON:
-		return ieee802154_process_beacon(sdata->dev, skb);
+		return mac802154_process_beacon(sdata->dev, skb);
 	case IEEE802154_FC_TYPE_ACK:
-		return ieee802154_process_ack(sdata->dev, skb);
+		return mac802154_process_ack(sdata->dev, skb);
 	case IEEE802154_FC_TYPE_MAC_CMD:
-		return ieee802154_process_cmd(sdata->dev, skb);
+		return mac802154_process_cmd(sdata->dev, skb);
 	case IEEE802154_FC_TYPE_DATA:
-		return ieee802154_process_data(sdata->dev, skb);
+		return mac802154_process_data(sdata->dev, skb);
 	default:
 		pr_warning("ieee802154: Bad frame received (type = %d)\n",
 				mac_cb_type(skb));
@@ -600,10 +600,10 @@ exit_error:
 	return -EINVAL;
 }
 
-void ieee802154_wpans_rx(struct ieee802154_priv *priv, struct sk_buff *skb)
+void mac802154_wpans_rx(struct mac802154_priv *priv, struct sk_buff *skb)
 {
 	int ret;
-	struct ieee802154_sub_if_data *sdata;
+	struct mac802154_sub_if_data *sdata;
 	struct sk_buff *skb2;
 
 	ret = parse_frame_start(skb); /* 3 bytes pulled after this */
@@ -622,7 +622,7 @@ void ieee802154_wpans_rx(struct ieee802154_priv *priv, struct sk_buff *skb)
 
 		skb2 = skb_clone(skb, GFP_ATOMIC);
 		if (skb2)
-			ieee802154_subif_frame(sdata, skb2);
+			mac802154_subif_frame(sdata, skb2);
 	}
 
 	rcu_read_unlock();

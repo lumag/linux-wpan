@@ -33,7 +33,7 @@
 #include "mac802154.h"
 #include "mib.h"
 
-static int ieee802154_cmd_beacon_req(struct sk_buff *skb)
+static int mac802154_cmd_beacon_req(struct sk_buff *skb)
 {
 	struct ieee802154_addr saddr; /* jeez */
 	int flags = 0;
@@ -59,12 +59,12 @@ static int ieee802154_cmd_beacon_req(struct sk_buff *skb)
 	 * We have no information in this command to proceed with.
 	 * we need to submit beacon as answer to this. */
 
-	return ieee802154_send_beacon(skb->dev, &saddr,
+	return mac802154_send_beacon(skb->dev, &saddr,
 			ieee802154_mlme_ops(skb->dev)->get_pan_id(skb->dev),
 			NULL, 0, flags, NULL);
 }
 
-static int ieee802154_cmd_assoc_req(struct sk_buff *skb)
+static int mac802154_cmd_assoc_req(struct sk_buff *skb)
 {
 	u8 cap;
 
@@ -88,7 +88,7 @@ static int ieee802154_cmd_assoc_req(struct sk_buff *skb)
 	return ieee802154_nl_assoc_indic(skb->dev, &mac_cb(skb)->sa, cap);
 }
 
-static int ieee802154_cmd_assoc_resp(struct sk_buff *skb)
+static int mac802154_cmd_assoc_resp(struct sk_buff *skb)
 {
 	u8 status;
 	u16 short_addr;
@@ -111,17 +111,17 @@ static int ieee802154_cmd_assoc_resp(struct sk_buff *skb)
 	pr_info("Received ASSOC-RESP status %x, addr %hx\n", status,
 			short_addr);
 	if (status) {
-		ieee802154_dev_set_short_addr(skb->dev,
+		mac802154_dev_set_short_addr(skb->dev,
 				IEEE802154_ADDR_BROADCAST);
-		ieee802154_dev_set_pan_id(skb->dev,
+		mac802154_dev_set_pan_id(skb->dev,
 				IEEE802154_PANID_BROADCAST);
 	} else
-		ieee802154_dev_set_short_addr(skb->dev, short_addr);
+		mac802154_dev_set_short_addr(skb->dev, short_addr);
 
 	return ieee802154_nl_assoc_confirm(skb->dev, short_addr, status);
 }
 
-static int ieee802154_cmd_disassoc_notify(struct sk_buff *skb)
+static int mac802154_cmd_disassoc_notify(struct sk_buff *skb)
 {
 	u8 reason;
 
@@ -147,7 +147,7 @@ static int ieee802154_cmd_disassoc_notify(struct sk_buff *skb)
 			reason);
 }
 
-int ieee802154_process_cmd(struct net_device *dev, struct sk_buff *skb)
+int mac802154_process_cmd(struct net_device *dev, struct sk_buff *skb)
 {
 	u8 cmd;
 
@@ -161,16 +161,16 @@ int ieee802154_process_cmd(struct net_device *dev, struct sk_buff *skb)
 
 	switch (cmd) {
 	case IEEE802154_CMD_ASSOCIATION_REQ:
-		ieee802154_cmd_assoc_req(skb);
+		mac802154_cmd_assoc_req(skb);
 		break;
 	case IEEE802154_CMD_ASSOCIATION_RESP:
-		ieee802154_cmd_assoc_resp(skb);
+		mac802154_cmd_assoc_resp(skb);
 		break;
 	case IEEE802154_CMD_DISASSOCIATION_NOTIFY:
-		ieee802154_cmd_disassoc_notify(skb);
+		mac802154_cmd_disassoc_notify(skb);
 		break;
 	case IEEE802154_CMD_BEACON_REQ:
-		ieee802154_cmd_beacon_req(skb);
+		mac802154_cmd_beacon_req(skb);
 		break;
 	default:
 		pr_debug("Frame type is not supported yet\n");
@@ -186,7 +186,7 @@ drop:
 	return NET_RX_DROP;
 }
 
-static int ieee802154_send_cmd(struct net_device *dev,
+static int mac802154_send_cmd(struct net_device *dev,
 		struct ieee802154_addr *addr, struct ieee802154_addr *saddr,
 		const u8 *buf, int len)
 {
@@ -220,7 +220,7 @@ static int ieee802154_send_cmd(struct net_device *dev,
 	return dev_queue_xmit(skb);
 }
 
-int ieee802154_send_beacon_req(struct net_device *dev)
+int mac802154_send_beacon_req(struct net_device *dev)
 {
 	struct ieee802154_addr addr;
 	struct ieee802154_addr saddr;
@@ -229,11 +229,11 @@ int ieee802154_send_beacon_req(struct net_device *dev)
 	addr.short_addr = IEEE802154_ADDR_BROADCAST;
 	addr.pan_id = IEEE802154_PANID_BROADCAST;
 	saddr.addr_type = IEEE802154_ADDR_NONE;
-	return ieee802154_send_cmd(dev, &addr, &saddr, &cmd, 1);
+	return mac802154_send_cmd(dev, &addr, &saddr, &cmd, 1);
 }
 
 
-static int ieee802154_mlme_assoc_req(struct net_device *dev,
+static int mac802154_mlme_assoc_req(struct net_device *dev,
 		struct ieee802154_addr *addr, u8 channel, u8 page, u8 cap)
 {
 	struct ieee802154_addr saddr;
@@ -246,18 +246,18 @@ static int ieee802154_mlme_assoc_req(struct net_device *dev,
 
 
 	/* FIXME: set PIB/MIB info */
-	ieee802154_dev_set_pan_id(dev, addr->pan_id);
-	ieee802154_dev_set_page(dev, page);
-	ieee802154_dev_set_channel(dev, channel);
-	ieee802154_dev_set_ieee_addr(dev);
+	mac802154_dev_set_pan_id(dev, addr->pan_id);
+	mac802154_dev_set_page(dev, page);
+	mac802154_dev_set_channel(dev, channel);
+	mac802154_dev_set_ieee_addr(dev);
 
 	buf[pos++] = IEEE802154_CMD_ASSOCIATION_REQ;
 	buf[pos++] = cap;
 
-	return ieee802154_send_cmd(dev, addr, &saddr, buf, pos);
+	return mac802154_send_cmd(dev, addr, &saddr, buf, pos);
 }
 
-static int ieee802154_mlme_assoc_resp(struct net_device *dev,
+static int mac802154_mlme_assoc_resp(struct net_device *dev,
 		struct ieee802154_addr *addr, u16 short_addr, u8 status)
 {
 	struct ieee802154_addr saddr;
@@ -273,10 +273,10 @@ static int ieee802154_mlme_assoc_resp(struct net_device *dev,
 	buf[pos++] = short_addr >> 8;
 	buf[pos++] = status;
 
-	return ieee802154_send_cmd(dev, addr, &saddr, buf, pos);
+	return mac802154_send_cmd(dev, addr, &saddr, buf, pos);
 }
 
-static int ieee802154_mlme_disassoc_req(struct net_device *dev,
+static int mac802154_mlme_disassoc_req(struct net_device *dev,
 		struct ieee802154_addr *addr, u8 reason)
 {
 	struct ieee802154_addr saddr;
@@ -291,17 +291,17 @@ static int ieee802154_mlme_disassoc_req(struct net_device *dev,
 	buf[pos++] = IEEE802154_CMD_DISASSOCIATION_NOTIFY;
 	buf[pos++] = reason;
 
-	ret = ieee802154_send_cmd(dev, addr, &saddr, buf, pos);
+	ret = mac802154_send_cmd(dev, addr, &saddr, buf, pos);
 
 	/* FIXME: this should be after the ack receved */
-	ieee802154_dev_set_pan_id(dev, 0xffff);
-	ieee802154_dev_set_short_addr(dev, 0xffff);
+	mac802154_dev_set_pan_id(dev, 0xffff);
+	mac802154_dev_set_short_addr(dev, 0xffff);
 	ieee802154_nl_disassoc_confirm(dev, 0x00);
 
 	return ret;
 }
 
-static int ieee802154_mlme_start_req(struct net_device *dev,
+static int mac802154_mlme_start_req(struct net_device *dev,
 				struct ieee802154_addr *addr,
 				u8 channel, u8 page,
 				u8 bcn_ord, u8 sf_ord, u8 pan_coord, u8 blx,
@@ -309,11 +309,11 @@ static int ieee802154_mlme_start_req(struct net_device *dev,
 {
 	BUG_ON(addr->addr_type != IEEE802154_ADDR_SHORT);
 
-	ieee802154_dev_set_pan_id(dev, addr->pan_id);
-	ieee802154_dev_set_short_addr(dev, addr->short_addr);
-	ieee802154_dev_set_ieee_addr(dev);
-	ieee802154_dev_set_page(dev, page);
-	ieee802154_dev_set_channel(dev, channel);
+	mac802154_dev_set_pan_id(dev, addr->pan_id);
+	mac802154_dev_set_short_addr(dev, addr->short_addr);
+	mac802154_dev_set_ieee_addr(dev);
+	mac802154_dev_set_page(dev, page);
+	mac802154_dev_set_channel(dev, channel);
 
 	/*
 	 * FIXME: add validation for unused parameters to be sane
@@ -325,24 +325,24 @@ static int ieee802154_mlme_start_req(struct net_device *dev,
 	else
 		dev->priv_flags &= ~IFF_IEEE802154_COORD;
 
-	ieee802154_dev_set_pan_coord(dev);
+	mac802154_dev_set_pan_coord(dev);
 	ieee802154_nl_start_confirm(dev, IEEE802154_SUCCESS);
 
 	return 0;
 }
 
 struct ieee802154_mlme_ops mac802154_mlme = {
-	.assoc_req = ieee802154_mlme_assoc_req,
-	.assoc_resp = ieee802154_mlme_assoc_resp,
-	.disassoc_req = ieee802154_mlme_disassoc_req,
-	.start_req = ieee802154_mlme_start_req,
-	.scan_req = ieee802154_mlme_scan_req,
+	.assoc_req = mac802154_mlme_assoc_req,
+	.assoc_resp = mac802154_mlme_assoc_resp,
+	.disassoc_req = mac802154_mlme_disassoc_req,
+	.start_req = mac802154_mlme_start_req,
+	.scan_req = mac802154_mlme_scan_req,
 
-	.get_phy = ieee802154_get_phy,
+	.get_phy = mac802154_get_phy,
 
-	.get_pan_id = ieee802154_dev_get_pan_id,
-	.get_short_addr = ieee802154_dev_get_short_addr,
-	.get_dsn = ieee802154_dev_get_dsn,
-	.get_bsn = ieee802154_dev_get_bsn,
+	.get_pan_id = mac802154_dev_get_pan_id,
+	.get_short_addr = mac802154_dev_get_short_addr,
+	.get_dsn = mac802154_dev_get_dsn,
+	.get_bsn = mac802154_dev_get_bsn,
 };
 

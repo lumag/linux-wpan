@@ -49,7 +49,7 @@ static void __beacon_add_node(struct ieee802154_addr *coord_addr, u16 pan_addr)
 	hlist_add_head(&node->list, list);
 }
 
-struct beacon_node *ieee802154_beacon_find_pan(
+struct beacon_node *mac802154_beacon_find_pan(
 		struct ieee802154_addr *coord_addr, u16 pan_addr)
 {
 	struct hlist_head *list;
@@ -66,18 +66,18 @@ struct beacon_node *ieee802154_beacon_find_pan(
 	return NULL;
 }
 
-void ieee802154_beacon_hash_add(struct ieee802154_addr *coord_addr)
+void mac802154_beacon_hash_add(struct ieee802154_addr *coord_addr)
 {
-	if (!ieee802154_beacon_find_pan(coord_addr, coord_addr->pan_id)) {
+	if (!mac802154_beacon_find_pan(coord_addr, coord_addr->pan_id)) {
 		spin_lock(&beacon_hash_lock);
 		__beacon_add_node(coord_addr, coord_addr->pan_id);
 		spin_unlock(&beacon_hash_lock);
 	}
 }
 
-void ieee802154_beacon_hash_del(struct ieee802154_addr *coord_addr)
+void mac802154_beacon_hash_del(struct ieee802154_addr *coord_addr)
 {
-	struct beacon_node *entry = ieee802154_beacon_find_pan(coord_addr,
+	struct beacon_node *entry = mac802154_beacon_find_pan(coord_addr,
 							coord_addr->pan_id);
 	if (!entry)
 		return;
@@ -87,7 +87,7 @@ void ieee802154_beacon_hash_del(struct ieee802154_addr *coord_addr)
 	kfree(entry);
 }
 
-void ieee802154_beacon_hash_dump(void)
+void mac802154_beacon_hash_dump(void)
 {
 	int i;
 	struct hlist_node *tmp;

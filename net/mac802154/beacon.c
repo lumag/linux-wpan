@@ -94,13 +94,13 @@
 #define IEEE802154_BEACON_FLAG_CANASSOC		(1 << 1)
 #define IEEE802154_BEACON_FLAG_GTSPERMIT		(1 << 2)
 
-struct ieee802154_address_list {
+struct mac802154_address_list {
 	struct list_head list;
 	struct ieee802154_addr addr;
 };
 
 /* Per spec; optimizations are needed */
-struct ieee802154_pandsc {
+struct mac802154_pandsc {
 	struct list_head	list;
 	struct ieee802154_addr	addr; /* Contains panid */
 	int			channel;
@@ -135,7 +135,7 @@ struct ieee802154_pandsc {
 */
 
 
-int ieee802154_send_beacon(struct net_device *dev,
+int mac802154_send_beacon(struct net_device *dev,
 		struct ieee802154_addr *saddr,
 		u16 pan_id, const u8 *buf, int len,
 		int flags, struct list_head *al)
@@ -212,10 +212,10 @@ static int parse_beacon_frame(struct sk_buff *skb, u8 *buf,
 	int offt = 0;
 	u8 gts_spec;
 	u8 pa_spec;
-	struct ieee802154_pandsc *pd;
+	struct mac802154_pandsc *pd;
 	u16 sf = skb->data[0] + (skb->data[1] << 8);
 
-	pd = kzalloc(sizeof(struct ieee802154_pandsc), GFP_KERNEL);
+	pd = kzalloc(sizeof(struct mac802154_pandsc), GFP_KERNEL);
 
 	/* Filling-up pre-parsed values */
 	pd->lqi = mac_cb(skb)->lqi;
@@ -257,7 +257,7 @@ static int parse_beacon_frame(struct sk_buff *skb, u8 *buf,
 	return 0;
 }
 
-int ieee802154_process_beacon(struct net_device *dev,
+int mac802154_process_beacon(struct net_device *dev,
 		struct sk_buff *skb)
 {
 	int flags;
@@ -272,8 +272,8 @@ int ieee802154_process_beacon(struct net_device *dev,
 	}
 	dev_dbg(&dev->dev, "got beacon from pan %04x\n",
 			mac_cb(skb)->sa.pan_id);
-	ieee802154_beacon_hash_add(&mac_cb(skb)->sa);
-	ieee802154_beacon_hash_dump();
+	mac802154_beacon_hash_add(&mac_cb(skb)->sa);
+	mac802154_beacon_hash_dump();
 	ret = NET_RX_SUCCESS;
 fail:
 	kfree_skb(skb);

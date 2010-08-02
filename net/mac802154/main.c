@@ -28,9 +28,9 @@
 
 #include "mac802154.h"
 
-int ieee802154_slave_open(struct net_device *dev)
+int mac802154_slave_open(struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *priv = netdev_priv(dev);
+	struct mac802154_sub_if_data *priv = netdev_priv(dev);
 	int res = 0;
 
 	if (priv->hw->open_count++ == 0) {
@@ -48,9 +48,9 @@ err:
 	return res;
 }
 
-int ieee802154_slave_close(struct net_device *dev)
+int mac802154_slave_close(struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *priv = netdev_priv(dev);
+	struct mac802154_sub_if_data *priv = netdev_priv(dev);
 
 	dev->priv_flags &= ~IFF_IEEE802154_COORD;
 
@@ -63,11 +63,11 @@ int ieee802154_slave_close(struct net_device *dev)
 }
 
 
-static int ieee802154_netdev_register(struct wpan_phy *phy,
+static int mac802154_netdev_register(struct wpan_phy *phy,
 					struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *priv;
-	struct ieee802154_priv *ipriv;
+	struct mac802154_sub_if_data *priv;
+	struct mac802154_priv *ipriv;
 	int err;
 
 	ipriv = wpan_phy_priv(phy);
@@ -93,10 +93,10 @@ static int ieee802154_netdev_register(struct wpan_phy *phy,
 	return 0;
 }
 
-static void ieee802154_del_iface(struct wpan_phy *phy,
+static void mac802154_del_iface(struct wpan_phy *phy,
 		struct net_device *dev)
 {
-	struct ieee802154_sub_if_data *sdata;
+	struct mac802154_sub_if_data *sdata;
 	ASSERT_RTNL();
 
 	BUG_ON(dev->type != ARPHRD_IEEE802154);
@@ -113,7 +113,7 @@ static void ieee802154_del_iface(struct wpan_phy *phy,
 	unregister_netdevice(sdata->dev);
 }
 
-static struct net_device *ieee802154_add_iface(struct wpan_phy *phy,
+static struct net_device *mac802154_add_iface(struct wpan_phy *phy,
 		const char *name, int type)
 {
 	struct net_device *dev;
@@ -121,16 +121,16 @@ static struct net_device *ieee802154_add_iface(struct wpan_phy *phy,
 
 	switch (type) {
 	case IEEE802154_DEV_WPAN:
-		dev = alloc_netdev(sizeof(struct ieee802154_sub_if_data),
-				name, ieee802154_wpan_setup);
+		dev = alloc_netdev(sizeof(struct mac802154_sub_if_data),
+				name, mac802154_wpan_setup);
 		break;
 	case IEEE802154_DEV_MONITOR:
-		dev = alloc_netdev(sizeof(struct ieee802154_sub_if_data),
-				name, ieee802154_monitor_setup);
+		dev = alloc_netdev(sizeof(struct mac802154_sub_if_data),
+				name, mac802154_monitor_setup);
 		break;
 	case IEEE802154_DEV_SMAC:
-		dev = alloc_netdev(sizeof(struct ieee802154_sub_if_data),
-				name, ieee802154_smac_setup);
+		dev = alloc_netdev(sizeof(struct mac802154_sub_if_data),
+				name, mac802154_smac_setup);
 		break;
 	default:
 		dev = NULL;
@@ -141,7 +141,7 @@ static struct net_device *ieee802154_add_iface(struct wpan_phy *phy,
 		goto err;
 
 
-	err = ieee802154_netdev_register(phy, dev);
+	err = mac802154_netdev_register(phy, dev);
 
 	if (err)
 		goto err_free;
@@ -160,7 +160,7 @@ struct ieee802154_dev *ieee802154_alloc_device(size_t priv_size,
 		struct ieee802154_ops *ops)
 {
 	struct wpan_phy *phy;
-	struct ieee802154_priv *priv;
+	struct mac802154_priv *priv;
 
 	phy = wpan_phy_alloc(ALIGN(sizeof(*priv), NETDEV_ALIGN) + priv_size);
 	if (!phy) {
@@ -191,7 +191,7 @@ EXPORT_SYMBOL(ieee802154_alloc_device);
 
 void ieee802154_free_device(struct ieee802154_dev *hw)
 {
-	struct ieee802154_priv *priv = ieee802154_to_priv(hw);
+	struct mac802154_priv *priv = mac802154_to_priv(hw);
 
 	BUG_ON(!list_empty(&priv->slaves));
 
@@ -201,7 +201,7 @@ EXPORT_SYMBOL(ieee802154_free_device);
 
 int ieee802154_register_device(struct ieee802154_dev *dev)
 {
-	struct ieee802154_priv *priv = ieee802154_to_priv(dev);
+	struct mac802154_priv *priv = mac802154_to_priv(dev);
 	int rc;
 
 	priv->dev_workqueue =
@@ -213,8 +213,8 @@ int ieee802154_register_device(struct ieee802154_dev *dev)
 
 	wpan_phy_set_dev(priv->phy, priv->hw.parent);
 
-	priv->phy->add_iface = ieee802154_add_iface;
-	priv->phy->del_iface = ieee802154_del_iface;
+	priv->phy->add_iface = mac802154_add_iface;
+	priv->phy->del_iface = mac802154_del_iface;
 
 	rc = wpan_phy_register(priv->phy);
 	if (rc < 0)
@@ -231,8 +231,8 @@ EXPORT_SYMBOL(ieee802154_register_device);
 
 void ieee802154_unregister_device(struct ieee802154_dev *dev)
 {
-	struct ieee802154_priv *priv = ieee802154_to_priv(dev);
-	struct ieee802154_sub_if_data *sdata, *next;
+	struct mac802154_priv *priv = mac802154_to_priv(dev);
+	struct mac802154_sub_if_data *sdata, *next;
 
 
 	flush_workqueue(priv->dev_workqueue);

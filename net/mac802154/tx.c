@@ -32,12 +32,12 @@
 struct xmit_work {
 	struct sk_buff *skb;
 	struct work_struct work;
-	struct ieee802154_priv *priv;
+	struct mac802154_priv *priv;
 	u8 page;
 	u8 chan;
 };
 
-static void ieee802154_xmit_worker(struct work_struct *work)
+static void mac802154_xmit_worker(struct work_struct *work)
 {
 	struct xmit_work *xw = container_of(work, struct xmit_work, work);
 	int res;
@@ -65,7 +65,7 @@ out:
 	kfree(xw);
 }
 
-netdev_tx_t ieee802154_tx(struct ieee802154_priv *priv, struct sk_buff *skb,
+netdev_tx_t mac802154_tx(struct mac802154_priv *priv, struct sk_buff *skb,
 		u8 page, u8 chan)
 {
 	struct xmit_work *work;
@@ -90,9 +90,9 @@ netdev_tx_t ieee802154_tx(struct ieee802154_priv *priv, struct sk_buff *skb,
 	if (!work)
 		return NETDEV_TX_BUSY;
 
-	ieee802154_monitors_rx(ieee802154_to_priv(&priv->hw), skb);
+	mac802154_monitors_rx(mac802154_to_priv(&priv->hw), skb);
 
-	INIT_WORK(&work->work, ieee802154_xmit_worker);
+	INIT_WORK(&work->work, mac802154_xmit_worker);
 	work->skb = skb;
 	work->priv = priv;
 	work->page = page;

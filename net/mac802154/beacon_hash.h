@@ -31,11 +31,11 @@ struct beacon_node {
 	struct ieee802154_addr coord_addr;
 	u16 pan_addr;
 };
-struct beacon_node *ieee802154_beacon_find_pan(
+struct beacon_node *mac802154_beacon_find_pan(
 		struct ieee802154_addr *coord_addr,
 		u16 pan_addr);
-void ieee802154_beacon_hash_add(struct ieee802154_addr *coord_addr);
-void ieee802154_beacon_hash_del(struct ieee802154_addr *coord_addr);
-void ieee802154_beacon_hash_dump(void);
+void mac802154_beacon_hash_add(struct ieee802154_addr *coord_addr);
+void mac802154_beacon_hash_del(struct ieee802154_addr *coord_addr);
+void mac802154_beacon_hash_dump(void);
 #endif
 

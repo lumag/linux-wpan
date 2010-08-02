@@ -32,9 +32,9 @@
 
 #include "mac802154.h"
 
-static void ieee802154_subif_rx(struct ieee802154_dev *hw, struct sk_buff *skb)
+static void mac802154_subif_rx(struct ieee802154_dev *hw, struct sk_buff *skb)
 {
-	struct ieee802154_priv *priv = ieee802154_to_priv(hw);
+	struct mac802154_priv *priv = mac802154_to_priv(hw);
 
 	BUILD_BUG_ON(sizeof(struct ieee802154_mac_cb) > sizeof(skb->cb));
 	pr_debug("%s()\n", __func__);
@@ -54,16 +54,16 @@ static void ieee802154_subif_rx(struct ieee802154_dev *hw, struct sk_buff *skb)
 		skb_trim(skb, skb->len - 2); /* CRC */
 	}
 
-	ieee802154_monitors_rx(priv, skb);
-	ieee802154_smacs_rx(priv, skb);
-	ieee802154_wpans_rx(priv, skb);
+	mac802154_monitors_rx(priv, skb);
+	mac802154_smacs_rx(priv, skb);
+	mac802154_wpans_rx(priv, skb);
 
 out:
 	dev_kfree_skb(skb);
 	return;
 }
 
-static void __ieee802154_rx_prepare(struct ieee802154_dev *dev,
+static void __mac802154_rx_prepare(struct ieee802154_dev *dev,
 		struct sk_buff *skb, u8 lqi)
 {
 	BUG_ON(!skb);
@@ -75,13 +75,13 @@ static void __ieee802154_rx_prepare(struct ieee802154_dev *dev,
 	skb_reset_mac_header(skb);
 }
 
-void ieee802154_rx(struct ieee802154_dev *dev, struct sk_buff *skb, u8 lqi)
+void mac802154_rx(struct ieee802154_dev *dev, struct sk_buff *skb, u8 lqi)
 {
-	__ieee802154_rx_prepare(dev, skb, lqi);
+	__mac802154_rx_prepare(dev, skb, lqi);
 
-	ieee802154_subif_rx(dev, skb);
+	mac802154_subif_rx(dev, skb);
 }
-EXPORT_SYMBOL(ieee802154_rx);
+EXPORT_SYMBOL(mac802154_rx);
 
 struct rx_work {
 	struct sk_buff *skb;
@@ -89,27 +89,27 @@ struct rx_work {
 	struct ieee802154_dev *dev;
 };
 
-static void ieee802154_rx_worker(struct work_struct *work)
+static void mac802154_rx_worker(struct work_struct *work)
 {
 	struct rx_work *rw = container_of(work, struct rx_work, work);
 	struct sk_buff *skb = rw->skb;
 
-	ieee802154_subif_rx(rw->dev, skb);
+	mac802154_subif_rx(rw->dev, skb);
 	kfree(rw);
 }
 
 void ieee802154_rx_irqsafe(struct ieee802154_dev *dev,
 		struct sk_buff *skb, u8 lqi)
 {
-	struct ieee802154_priv *priv = ieee802154_to_priv(dev);
+	struct mac802154_priv *priv = mac802154_to_priv(dev);
 	struct rx_work *work = kzalloc(sizeof(struct rx_work), GFP_ATOMIC);
 
 	if (!work)
 		return;
 
-	__ieee802154_rx_prepare(dev, skb, lqi);
+	__mac802154_rx_prepare(dev, skb, lqi);
 
-	INIT_WORK(&work->work, ieee802154_rx_worker);
+	INIT_WORK(&work->work, mac802154_rx_worker);
 	work->skb = skb;
 	work->dev = dev;
 

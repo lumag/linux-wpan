@@ -57,7 +57,7 @@ struct scan_work {
 static int scan_ed(struct scan_work *work, int channel, u8 duration)
 {
 	int ret;
-	struct ieee802154_priv *hw = ieee802154_slave_get_priv(work->dev);
+	struct mac802154_priv *hw = mac802154_slave_get_priv(work->dev);
 	pr_debug("ed scan channel %d duration %d\n", channel, duration);
 	mutex_lock(&hw->phy->pib_lock);
 	ret = hw->ops->ed(&hw->hw, &work->edl[channel]);
@@ -85,7 +85,7 @@ static int scan_active(struct scan_work *work, int channel, u8 duration)
 {
 	int ret;
 	pr_debug("active scan channel %d duration %d\n", channel, duration);
-	ret = ieee802154_send_beacon_req(work->dev);
+	ret = mac802154_send_beacon_req(work->dev);
 	if (ret)
 		return ret;
 	return scan_passive(work, channel, duration);
@@ -100,7 +100,7 @@ static int scan_orphan(struct scan_work *work, int channel, u8 duration)
 static void scanner(struct work_struct *work)
 {
 	struct scan_work *sw = container_of(work, struct scan_work, work);
-	struct ieee802154_priv *hw = ieee802154_slave_get_priv(sw->dev);
+	struct mac802154_priv *hw = mac802154_slave_get_priv(sw->dev);
 	int i;
 	int ret;
 
@@ -144,10 +144,10 @@ exit_error:
  * @param duration scan duration, see ieee802.15.4-2003.pdf, page 145.
  * @return 0 if request is ok, errno otherwise.
  */
-int ieee802154_mlme_scan_req(struct net_device *dev,
+int mac802154_mlme_scan_req(struct net_device *dev,
 		u8 type, u32 channels, u8 page, u8 duration)
 {
-	struct ieee802154_priv *hw = ieee802154_slave_get_priv(dev);
+	struct mac802154_priv *hw = mac802154_slave_get_priv(dev);
 	struct scan_work *work;
 
 	pr_debug("%s()\n", __func__);
