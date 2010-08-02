@@ -71,6 +71,8 @@
 					 * release skb->dst
 					 */
 #define IFF_DONT_BRIDGE 0x800		/* disallow bridging this ether dev */
+#define IFF_IN_NETPOLL	0x1000		/* whether we are processing netpoll */
+#define IFF_DISABLE_NETPOLL	0x2000	/* disable netpoll at run-time */
 
 #define IFF_IEEE802154_COORD 0x400	/* IEEE802.15.4 PAN coordinator */
 
