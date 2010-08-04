@@ -14,7 +14,7 @@
  *
  * Author:	Jonathan Cameron <jic23@cam.ac.uk>
  *
- * Modified 2010:	liuxue <linuxue@yahoo.cn>
+ * Modified 2010:	xue liu <liuxuenetmail@gmail.com>
  */
 
 #include <linux/kernel.h>
@@ -34,22 +34,45 @@
 
 #define CC2420_WRITEREG(x) (x)
 #define CC2420_READREG(x) (0x40 | x)
+#define CC2420_RAMADDR(x) ((x & 0x7F) | 0x80)
+#define CC2420_RAMBANK(x) ((x >> 1) & 0xc0)
+#define CC2420_WRITERAM(x) (x)
+#define CC2420_READRAM(x) (0x20 | x)
 
 #define CC2420_FREQ_MASK 		0x3FF
 #define CC2420_ADR_DECODE_MASK	0x0B00
 #define CC2420_FIFOP_THR_MASK	0x003F
 #define CC2420_CRC_MASK			0x80
+#define CC2420_RSSI_MASK		0x7F
+#define CC2420_FSMSTATE_MASK	0x2F
 
 #define CC2420_MANFIDLOW 	0x233D
 #define CC2420_MANFIDHIGH 	0x3000 /* my chip appears to version 3 - broaden this with testing */
 
+#define RSSI_OFFSET 45
+
 #define STATE_PDOWN 0
 #define STATE_IDLE  1
-#define STATE_RX_CALIB 2
-#define STATE_RX_CALIB2 40
+#define STATE_RX_CALIBRATE		2
+#define STATE_RX_CALIBRATE2		40
 
 #define STATE_RX_SFD_SEARCH_MIN 3
 #define STATE_RX_SFD_SEARCH_MAX 6
+#define STATE_RX_FRAME			16
+#define STATE_RX_FRAME2			40
+#define STATE_RX_WAIT			14
+#define STATE_RX_OVERFLOW		17
+#define STATE_TX_ACK_CALIBRATE	48
+#define STATE_TX_ACK_PREAMBLE_MIN	49
+#define STATE_TX_ACK_PREAMBLE_MAX	51
+#define STATE_TX_ACK_MIN			52
+#define STATE_TX_ACK_MAX			54
+#define STATE_TX_CALIBRATE			32
+#define STATE_TX_PREAMBLE_MIN		34
+#define STATE_TX_PREAMBLE_MAX		36
+#define STATE_TX_FRAME_MIN			37
+#define STATE_TX_FRAME_MAX			39
+#define STATE_TX_UNDERFLOW			56
 
 struct cc2420_local {
 	struct cc2420_platform_data *pdata;
@@ -168,10 +191,6 @@ static int cc2420_write_16_bit_reg_partial(struct cc2420_local *lp,
 
 	lp->buf[0] = CC2420_WRITEREG(addr);
 
-	//dev_vdbg(&lp->spi->dev, "test: ~(mask >> 8) | (data >> 8) = %x\n", ~(mask >> 8) | (data >> 8));
-	//dev_vdbg(&lp->spi->dev, "test: ~(mask & 0xFF) | (data & 0xFF) = %x\n", ~(mask & 0xFF) | (data & 0xFF));
-	//lp->buf[1] &= ~(mask >> 8) | (data >> 8);
-	//lp->buf[2] &= ~(mask & 0xFF) | (data & 0xFF);
 	lp->buf[1] &= ~(mask >> 8);
 	lp->buf[2] &= ~(mask & 0xFF);
 	lp->buf[1] |= (mask >> 8) & (data >> 8);
@@ -191,8 +210,7 @@ err_ret:
 	return ret;
 }
 
-static int
-cc2420_channel(struct ieee802154_dev *dev, int channel)
+static int cc2420_channel(struct ieee802154_dev *dev, int channel)
 {
 	struct cc2420_local *lp = dev->priv;
 	int ret;
@@ -209,8 +227,42 @@ cc2420_channel(struct ieee802154_dev *dev, int channel)
 	return ret;
 }
 
-static int
-cc2420_write_txfifo(struct cc2420_local *lp, u8 *data, u8 len)
+static int cc2420_write_ram(struct cc2420_local *lp, u16 addr, u8 len, u8 *data)
+{
+	int status;
+	struct spi_message msg;
+	struct spi_transfer xfer_head = {
+		.len		= 2,
+		.tx_buf		= lp->buf,
+		.rx_buf		= lp->buf,
+	};
+	struct spi_transfer xfer_buf = {
+		.len		= len,
+		.tx_buf		= data,
+	};
+
+	mutex_lock(&lp->bmux);
+	lp->buf[0] = CC2420_RAMADDR(addr);
+	lp->buf[1] = CC2420_WRITERAM(CC2420_RAMBANK(addr));
+	dev_dbg(&lp->spi->dev, "write ram addr buf[0] = %02x\n", lp->buf[0]);
+	dev_dbg(&lp->spi->dev, "ram bank buf[1] = %02x\n", lp->buf[1]);
+
+	spi_message_init(&msg);
+	spi_message_add_tail(&xfer_head, &msg);
+	spi_message_add_tail(&xfer_buf, &msg);
+
+	status = spi_sync(lp->spi, &msg);
+	dev_dbg(&lp->spi->dev, "spi status = %d\n", status);
+	if (msg.status)
+		status = msg.status;
+	dev_dbg(&lp->spi->dev, "cc2420 status = %02x\n", lp->buf[0]);
+	dev_dbg(&lp->spi->dev, "buf[1] = %02x\n", lp->buf[1]);
+
+	mutex_unlock(&lp->bmux);
+	return status;
+}
+
+static int cc2420_write_txfifo(struct cc2420_local *lp, u8 *data, u8 len)
 {
 	int status;
 	/* Length byte must include FCS even if calculated in hardware */
@@ -291,8 +343,7 @@ cc2420_read_rxfifo(struct cc2420_local *lp, u8 *data, u8 *len, u8 *lqi)
 }
 
 
-static int
-cc2420_tx(struct ieee802154_dev *dev, struct sk_buff *skb)
+static int cc2420_tx(struct ieee802154_dev *dev, struct sk_buff *skb)
 {
 	struct cc2420_local *lp = dev->priv;
 	int rc;
@@ -379,22 +430,73 @@ static int cc2420_rx(struct cc2420_local *lp)
 }
 
 static int
-cc2420_ed(struct ieee802154_dev *dev, u8 *level)
+cc2420_set_hw_addr_filt(struct ieee802154_dev *dev,
+						struct ieee802154_hw_addr_filt *filt,
+						unsigned long changed)
 {
 	struct cc2420_local *lp = dev->priv;
-	dev_dbg(&lp->spi->dev, "ed called\n");
-	*level = 0xbe;
+	u16 reg;
+
+	might_sleep();
+
+	if (changed & IEEE802515_IEEEADDR_CHANGED)
+		cc2420_write_ram(lp, CC2420_RAM_IEEEADR,
+						 IEEE802154_ADDR_LEN,
+						 filt->ieee_addr);
+
+	if (changed & IEEE802515_SADDR_CHANGED) {
+		u8 short_addr[2];
+		short_addr[0] = filt->short_addr & 0xff;/* LSB */
+		short_addr[1] = filt->short_addr >> 8;	/* MSB */
+		cc2420_write_ram(lp, CC2420_RAM_SHORTADR,
+						 sizeof(short_addr),
+						 short_addr);
+	}
+
+	if (changed & IEEE802515_PANID_CHANGED) {
+		u8 panid[2];
+		panid[0] = filt->pan_id & 0xff;	/* LSB */
+		panid[1] = filt->pan_id >> 8;	/* MSB */
+		cc2420_write_ram(lp, CC2420_RAM_PANID,
+						 sizeof(panid),
+						 panid);
+	}
+
+	if (changed & IEEE802515_PANC_CHANGED) {
+		cc2420_read_16_bit_reg(lp, CC2420_MDMCTRL0, &reg);
+		if (filt->pan_coord)
+			reg |= 1 << CC2420_MDMCTRL0_PANCRD;
+		else
+			reg &= ~(1 << CC2420_MDMCTRL0_PANCRD);
+		cc2420_write_16_bit_reg_partial(lp, CC2420_MDMCTRL0,
+										reg, 1 << CC2420_MDMCTRL0_PANCRD);
+	}
+
 	return 0;
 }
 
-static int
-cc2420_start(struct ieee802154_dev *dev)
+static int cc2420_ed(struct ieee802154_dev *dev, u8 *level)
+{
+	struct cc2420_local *lp = dev->priv;
+	u16 rssi;
+	int ret;
+	dev_dbg(&lp->spi->dev, "ed called\n");
+
+	ret = cc2420_read_16_bit_reg(lp, CC2420_RSSI, &rssi);
+	if (ret)
+		return ret;
+
+	/* P = RSSI_VAL + RSSI_OFFSET[dBm] */
+	*level = (rssi & CC2420_RSSI_MASK) + RSSI_OFFSET;
+	return ret;
+}
+
+static int cc2420_start(struct ieee802154_dev *dev)
 {
 	return cc2420_cmd_strobe(dev->priv, CC2420_SRXON);
 }
 
-static void
-cc2420_stop(struct ieee802154_dev *dev)
+static void cc2420_stop(struct ieee802154_dev *dev)
 {
 	cc2420_cmd_strobe(dev->priv, CC2420_SRFOFF);
 }
@@ -406,6 +508,7 @@ static struct ieee802154_ops cc2420_ops = {
 	.start 		= cc2420_start,
 	.stop 		= cc2420_stop,
 	.set_channel = cc2420_channel,
+	.set_hw_addr_filt = cc2420_set_hw_addr_filt,
 };
 
 static int cc2420_register(struct cc2420_local *lp)
@@ -431,6 +534,7 @@ static int cc2420_register(struct cc2420_local *lp)
 	ret = ieee802154_register_device(lp->dev);
 	if (ret)
 		goto err_free_device;
+
 	return 0;
 err_free_device:
 	ieee802154_free_device(lp->dev);
@@ -456,7 +560,6 @@ static irqreturn_t cc2420_isr(int irq, void *data)
 	}
 	spin_unlock(&lp->lock);
 
-	/* pin or value? */
 	if (irq == lp->sfd_irq)
 		schedule_work(&lp->sfd_irqwork);
 
@@ -678,9 +781,6 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 		goto err_free_sfd_irq;
 	}
 
-	dev_dbg(&lp->spi->dev, "Disable hardware address decoding\n");
-	cc2420_write_16_bit_reg_partial(lp, CC2420_MDMCTRL0,
-					0, 1 << CC2420_MDMCTRL0_ADRDECODE);
 	dev_info(&lp->spi->dev, "Set fifo threshold to 127\n");
 	cc2420_write_16_bit_reg_partial(lp, CC2420_IOCFG0, 127, CC2420_FIFOP_THR_MASK);
 	ret = cc2420_register(lp);
@@ -689,9 +789,9 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 
 	return 0;
 err_free_sfd_irq:
-	free_irq(gpio_to_irq(lp->pdata->sfd), lp);
+	free_irq(lp->sfd_irq, lp);
 err_free_fifop_irq:
-	free_irq(gpio_to_irq(lp->pdata->fifop), lp);
+	free_irq(lp->fifop_irq, lp);
 err_disable_vreg:
 	gpio_set_value(lp->pdata->vreg, 0);
 err_free_gpio_vreg:
@@ -719,8 +819,10 @@ static int __devexit cc2420_remove(struct spi_device *spi)
 	struct cc2420_local *lp = spi_get_drvdata(spi);
 
 	cc2420_unregister(lp);
-	free_irq(gpio_to_irq(lp->pdata->fifop), lp);
-	free_irq(gpio_to_irq(lp->pdata->sfd), lp);
+	free_irq(lp->fifop_irq, lp);
+	free_irq(lp->sfd_irq, lp);
+	flush_work(&lp->fifop_irqwork);
+	flush_work(&lp->sfd_irqwork);
 	gpio_free(lp->pdata->vreg);
 	gpio_free(lp->pdata->reset);
 	gpio_free(lp->pdata->sfd);

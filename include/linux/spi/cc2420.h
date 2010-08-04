@@ -14,7 +14,7 @@
  *
  * Author:	Jonathan Cameron <jic23@cam.ac.uk>
  *
- * Modified 2010:	liuxue <linuxue@yahoo.cn>
+ * Modified 2010:	xue liu <liuxuenetmail@gmail.com>
  */
 
 #ifndef __CC2420_H
