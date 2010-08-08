@@ -80,6 +80,13 @@ static int mac802154_netdev_register(struct wpan_phy *phy,
 
 	SET_NETDEV_DEV(dev, &ipriv->phy->dev);
 
+	mutex_lock(&ipriv->slaves_mtx);
+	if (!ipriv->running) {
+		mutex_unlock(&ipriv->slaves_mtx);
+		return -ENODEV;
+	}
+	mutex_unlock(&ipriv->slaves_mtx);
+
 	err = register_netdev(dev);
 	if (err < 0)
 		return err;
@@ -220,6 +227,12 @@ int ieee802154_register_device(struct ieee802154_dev *dev)
 	if (rc < 0)
 		goto out_wq;
 
+	rtnl_lock();
+	mutex_lock(&priv->slaves_mtx);
+	priv->running = 1;
+	mutex_unlock(&priv->slaves_mtx);
+	rtnl_unlock();
+
 	return 0;
 
 out_wq:
@@ -239,6 +252,10 @@ void ieee802154_unregister_device(struct ieee802154_dev *dev)
 	destroy_workqueue(priv->dev_workqueue);
 
 	rtnl_lock();
+
+	mutex_lock(&priv->slaves_mtx);
+	priv->running = 0;
+	mutex_unlock(&priv->slaves_mtx);
 
 	list_for_each_entry_safe(sdata, next, &priv->slaves, list) {
 		mutex_lock(&sdata->hw->slaves_mtx);

@@ -43,6 +43,13 @@ struct mac802154_priv {
 	/* This one is used for scanning and other
 	 * jobs not to be interfered with serial driver */
 	struct workqueue_struct	*dev_workqueue;
+
+	/*
+	 * These flags are also modified under slaves_mtx and RTNL,
+	 * so you can read them using any of protection methods.
+	 */
+	/* SoftMAC device is registered and running. One can add subinterfaces. */
+	unsigned running: 1;
 };
 
 #define mac802154_to_priv(_hw)	container_of(_hw, struct mac802154_priv, hw)
