@@ -26,6 +26,7 @@
 #include <net/wpan-phy.h>
 
 #include "mac802154.h"
+#include "mib.h"
 
 int mac802154_slave_open(struct net_device *dev)
 {
@@ -37,6 +38,14 @@ int mac802154_slave_open(struct net_device *dev)
 		WARN_ON(res);
 		if (res)
 			goto err;
+	}
+
+	if (priv->hw->ops->ieee_addr) {
+		res = priv->hw->ops->ieee_addr(&priv->hw->hw, dev->dev_addr);
+		WARN_ON(res);
+		if (res)
+			goto err;
+		mac802154_dev_set_ieee_addr(dev);
 	}
 
 	netif_start_queue(dev);

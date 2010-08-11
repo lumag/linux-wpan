@@ -77,16 +77,18 @@ enum {
 	CMD_SET_STATE		= 0x07, /* u8 id, u8 flag */
 	DATA_XMIT_BLOCK		= 0x09, /* u8 id, u8 len, u8 data[len] */
 	RESP_RECV_BLOCK		= 0x0b, /* u8 id, u8 status */
+	CMD_ADDRESS		= 0x0d, /* u8 id */
 
 	/* Firmware to Driver */
 	RESP_OPEN		= 0x81, /* u8 id, u8 status */
 	RESP_CLOSE		= 0x82, /* u8 id, u8 status */
-	RESP_SET_CHANNEL 	= 0x84, /* u8 id, u8 status */
+	RESP_SET_CHANNEL	= 0x84, /* u8 id, u8 status */
 	RESP_ED			= 0x85, /* u8 id, u8 status, u8 level */
 	RESP_CCA		= 0x86, /* u8 id, u8 status */
 	RESP_SET_STATE		= 0x87, /* u8 id, u8 status */
 	RESP_XMIT_BLOCK		= 0x89, /* u8 id, u8 status */
 	DATA_RECV_BLOCK		= 0x8b, /* u8 id, u8 lq, u8 len, u8 data[len] */
+	RESP_ADDRESS		= 0x8d, /* u8 id, u8 status, u8 u8 u8 u8 u8 u8 u8 u8 address */
 };
 
 enum {
@@ -309,6 +311,7 @@ is_command(unsigned char c)
 	case RESP_SET_STATE:
 	case RESP_XMIT_BLOCK:
 	case DATA_RECV_BLOCK:
+	case RESP_ADDRESS:
 		return 1;
 	}
 	return 0;
@@ -331,7 +334,9 @@ _match_pending_id(struct zb_device *zbdev)
 			RESP_SET_STATE == zbdev->id) ||
 		(DATA_XMIT_BLOCK == zbdev->pending_id &&
 			RESP_XMIT_BLOCK == zbdev->id) ||
-		DATA_RECV_BLOCK == zbdev->id);
+		(DATA_RECV_BLOCK == zbdev->id) ||
+		(CMD_ADDRESS == zbdev->pending_id &&
+			RESP_ADDRESS == zbdev->id));
 }
 
 static void serial_net_rx(struct zb_device *zbdev)
@@ -391,6 +396,11 @@ process_command(struct zb_device *zbdev)
 		/* zbdev->param1 is LQ, zbdev->param2 is length */
 		serial_net_rx(zbdev);
 		break;
+	case RESP_ADDRESS:
+		pr_debug("Received address, %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n", 
+			zbdev->data[0], zbdev->data[1], zbdev->data[2], zbdev->data[3],
+			zbdev->data[4], zbdev->data[5], zbdev->data[6], zbdev->data[7]);
+		break;
 	}
 
 	wake_up(&zbdev->wq);
@@ -428,7 +438,10 @@ process_char(struct zb_device *zbdev, unsigned char c)
 		zbdev->param1 = c;
 		if ((RESP_ED == zbdev->id) || (DATA_RECV_BLOCK == zbdev->id))
 			zbdev->state = STATE_WAIT_PARAM2;
-		else {
+		else if (RESP_ADDRESS == zbdev->id) {
+			zbdev->param2 = 8;
+			zbdev->state = STATE_WAIT_DATA;
+		} else {
 			process_command(zbdev);
 			cleanup(zbdev);
 		}
@@ -616,6 +629,42 @@ out:
 }
 
 static int
+ieee802154_serial_address(struct ieee802154_dev *dev, u8 addr[IEEE802154_ALEN])
+{
+	struct zb_device *zbdev;
+	int ret = 0;
+
+	pr_debug("%s\n", __func__);
+
+	zbdev = dev->priv;
+	if (NULL == zbdev) {
+		printk(KERN_ERR "%s: wrong phy\n", __func__);
+		return -EINVAL;
+	}
+
+	if (mutex_lock_interruptible(&zbdev->mutex))
+		return -EINTR;
+
+	ret = send_cmd(zbdev, CMD_ADDRESS);
+	if (ret)
+		goto out;
+
+	if (wait_event_interruptible_timeout(zbdev->wq,
+				zbdev->status != STATUS_WAIT,
+				msecs_to_jiffies(1000)) > 0) {
+		memcpy(addr, zbdev->data, sizeof addr);
+		if (zbdev->status != STATUS_SUCCESS)
+			ret = -EBUSY;
+	} else
+		ret = -ETIMEDOUT;
+out:
+
+	mutex_unlock(&zbdev->mutex);
+	pr_debug("%s end\n", __func__);
+	return ret;
+}
+
+static int
 ieee802154_serial_start(struct ieee802154_dev *dev)
 {
 	struct zb_device *zbdev;
@@ -775,6 +824,7 @@ static struct ieee802154_ops serial_ops = {
 	.set_channel	= ieee802154_serial_set_channel,
 	.start		= ieee802154_serial_start,
 	.stop		= ieee802154_serial_stop,
+	.ieee_addr	= ieee802154_serial_address,
 };
 
 /*

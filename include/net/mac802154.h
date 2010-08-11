@@ -139,6 +139,8 @@ struct ieee802154_ops {
 	int		(*set_hw_addr_filt)(struct ieee802154_dev *dev,
 					struct ieee802154_hw_addr_filt *filt,
 					unsigned long changed);
+	int		(*ieee_addr)(struct ieee802154_dev *dev,
+					u8 addr[IEEE802154_ALEN]);
 };
 
 struct ieee802154_dev *ieee802154_alloc_device(size_t priv_size,
