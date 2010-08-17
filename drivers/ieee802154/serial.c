@@ -811,9 +811,10 @@ ieee802154_tty_open(struct tty_struct *tty)
 
 	dev->flags = IEEE802154_HW_OMIT_CKSUM;
 
-	dev->parent = tty_get_device(tty);
+	dev->parent = tty->dev;
 
 	zbdev->tty = tty_kref_get(tty);
+
 	cleanup(zbdev);
 
 	tty->disc_data = zbdev;
@@ -827,9 +828,6 @@ ieee802154_tty_open(struct tty_struct *tty)
 	tty_driver_flush_buffer(tty);
 
 	err = ieee802154_register_device(dev);
-	/* we put it only after it has a chance to be get by network core */
-	if (zbdev->dev->parent)
-		put_device(zbdev->dev->parent);
 	if (err) {
 		printk(KERN_ERR "%s: device register failed\n", __func__);
 		goto out_free;
