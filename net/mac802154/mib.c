@@ -171,9 +171,9 @@ void mac802154_dev_set_ieee_addr(struct net_device *dev)
 
 	if (priv->hw->ops->set_hw_addr_filt &&
 		memcmp(priv->hw->hw.hw_filt.ieee_addr,
-			dev->dev_addr, IEEE802154_ADDR_LEN)) {
+			dev->dev_addr, IEEE802154_ALEN)) {
 		memcpy(priv->hw->hw.hw_filt.ieee_addr,
-			dev->dev_addr, IEEE802154_ADDR_LEN);
+			dev->dev_addr, IEEE802154_ALEN);
 		set_hw_addr_filt(dev, IEEE802515_IEEEADDR_CHANGED);
 	}
 }

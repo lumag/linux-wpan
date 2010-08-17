@@ -91,6 +91,8 @@ struct mac802154_sub_if_data {
 	u8 dsn;
 };
 
+struct ieee802154_addr;
+
 extern struct ieee802154_mlme_ops mac802154_mlme;
 
 int mac802154_mlme_scan_req(struct net_device *dev,

@@ -22,7 +22,6 @@
 #include <linux/nl802154.h>
 #include <net/route.h>
 
-#include <net/af_ieee802154.h>
 #include <net/mac802154.h>
 #include <net/wpan-phy.h>
 

@@ -26,7 +26,6 @@
 #include <linux/netdevice.h>
 #include <linux/crc-ccitt.h>
 
-#include <net/af_ieee802154.h>
 #include <net/mac802154.h>
 #include <net/ieee802154_netdev.h>
 

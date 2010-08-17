@@ -21,7 +21,7 @@
 #ifndef NET_MAC802154_H
 #define NET_MAC802154_H
 
-#include <net/af_ieee802154.h>
+#include <linux/if_ieee802154.h>
 
 /**
  * enum ieee802154_hw_addr_filt_flags - hardware flags
@@ -51,7 +51,7 @@ enum ieee802154_hw_addr_filt_flags {
 struct ieee802154_hw_addr_filt {
 	u16 pan_id;
 	u16 short_addr;
-	u8 ieee_addr[IEEE802154_ADDR_LEN];
+	u8 ieee_addr[IEEE802154_ALEN];
 	u8 pan_coord;
 };
 
