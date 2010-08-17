@@ -441,7 +441,7 @@ cc2420_set_hw_addr_filt(struct ieee802154_dev *dev,
 
 	if (changed & IEEE802515_IEEEADDR_CHANGED)
 		cc2420_write_ram(lp, CC2420_RAM_IEEEADR,
-						 IEEE802154_ADDR_LEN,
+						 IEEE802154_ALEN,
 						 filt->ieee_addr);
 
 	if (changed & IEEE802515_SADDR_CHANGED) {
