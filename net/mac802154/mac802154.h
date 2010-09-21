@@ -93,7 +93,8 @@ struct mac802154_sub_if_data {
 
 struct ieee802154_addr;
 
-extern struct ieee802154_mlme_ops mac802154_mlme;
+extern struct ieee802154_mlme_ops mac802154_mlme_wpan;
+extern struct simple_mlme_ops mac802154_mlme_simple;
 
 int mac802154_mlme_scan_req(struct net_device *dev,
 		u8 type, u32 channels, u8 page, u8 duration);

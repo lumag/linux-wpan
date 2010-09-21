@@ -331,14 +331,14 @@ static int mac802154_mlme_start_req(struct net_device *dev,
 	return 0;
 }
 
-struct ieee802154_mlme_ops mac802154_mlme = {
+struct ieee802154_mlme_ops mac802154_mlme_wpan = {
 	.assoc_req = mac802154_mlme_assoc_req,
 	.assoc_resp = mac802154_mlme_assoc_resp,
 	.disassoc_req = mac802154_mlme_disassoc_req,
 	.start_req = mac802154_mlme_start_req,
 	.scan_req = mac802154_mlme_scan_req,
 
-	.get_phy = mac802154_get_phy,
+	.wpan_ops.get_phy = mac802154_get_phy,
 
 	.get_pan_id = mac802154_dev_get_pan_id,
 	.get_short_addr = mac802154_dev_get_short_addr,
@@ -346,3 +346,6 @@ struct ieee802154_mlme_ops mac802154_mlme = {
 	.get_bsn = mac802154_dev_get_bsn,
 };
 
+struct simple_mlme_ops mac802154_mlme_simple = {
+	.get_phy = mac802154_get_phy,
+};

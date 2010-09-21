@@ -105,8 +105,6 @@ static void mac802154_del_iface(struct wpan_phy *phy,
 	struct mac802154_sub_if_data *sdata;
 	ASSERT_RTNL();
 
-	BUG_ON(dev->type != ARPHRD_IEEE802154);
-
 	sdata = netdev_priv(dev);
 
 	BUG_ON(sdata->hw->phy != phy);

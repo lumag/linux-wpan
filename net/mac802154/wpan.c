@@ -347,7 +347,7 @@ void mac802154_wpan_setup(struct net_device *dev)
 
 	dev->destructor		= free_netdev;
 	dev->netdev_ops		= &mac802154_wpan_ops;
-	dev->ml_priv		= &mac802154_mlme;
+	dev->ml_priv		= &mac802154_mlme_wpan.wpan_ops;
 
 	priv = netdev_priv(dev);
 	priv->type = IEEE802154_DEV_WPAN;
