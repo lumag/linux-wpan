@@ -259,7 +259,7 @@ static struct ieee802154_mlme_ops fake_mlme = {
 	.start_req = fake_start_req,
 	.scan_req = fake_scan_req,
 
-	.get_phy = fake_get_phy,
+	.wpan_ops.get_phy = fake_get_phy,
 
 	.get_pan_id = fake_get_pan_id,
 	.get_short_addr = fake_get_short_addr,

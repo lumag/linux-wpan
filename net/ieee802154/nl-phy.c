@@ -293,7 +293,7 @@ static int ieee802154_del_iface(struct sk_buff *skb,
 	if (!dev)
 		return -ENODEV;
 
-	phy = ieee802154_mlme_ops(dev)->get_phy(dev);
+	phy = simple_mlme_ops(dev)->get_phy(dev);
 	BUG_ON(!phy);
 
 	rc = -EINVAL;
