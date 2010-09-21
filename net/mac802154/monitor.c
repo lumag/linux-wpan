@@ -24,6 +24,7 @@
 #include <linux/skbuff.h>
 #include <linux/if_arp.h>
 #include <linux/nl802154.h>
+#include <linux/crc-ccitt.h>
 
 #include <net/mac802154.h>
 #include <net/wpan-phy.h>
@@ -59,6 +60,8 @@ void mac802154_monitors_rx(struct mac802154_priv *priv, struct sk_buff *skb)
 {
 	struct sk_buff *skb2;
 	struct mac802154_sub_if_data *sdata;
+	u16 crc = crc_ccitt(0, skb->data, skb->len);
+	u8 *data;
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(sdata, &priv->slaves, list) {
@@ -68,6 +71,9 @@ void mac802154_monitors_rx(struct mac802154_priv *priv, struct sk_buff *skb)
 		skb2 = skb_clone(skb, GFP_ATOMIC);
 		skb2->dev = sdata->dev;
 		skb2->pkt_type = PACKET_HOST;
+		data = skb_put(skb2, 2);
+		data[0] = crc & 0xff;
+		data[1] = crc >> 8;
 
 		if (in_interrupt())
 			netif_rx(skb2);
