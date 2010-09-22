@@ -28,8 +28,7 @@ void mac802154_dev_set_pan_id(struct net_device *dev, u16 val);
 void mac802154_dev_set_pan_coord(struct net_device *dev);
 void mac802154_dev_set_short_addr(struct net_device *dev, u16 val);
 void mac802154_dev_set_ieee_addr(struct net_device *dev);
-void mac802154_dev_set_channel(struct net_device *dev, u8 chan);
-void mac802154_dev_set_page(struct net_device *dev, u8 page);
+void mac802154_dev_set_page_channel(struct net_device *dev, u8 page, u8 chan);
 struct wpan_phy *mac802154_get_phy(const struct net_device *dev);
 
 

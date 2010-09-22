@@ -178,7 +178,7 @@ void mac802154_dev_set_ieee_addr(struct net_device *dev)
 	}
 }
 
-void mac802154_dev_set_channel(struct net_device *dev, u8 val)
+void mac802154_dev_set_page_channel(struct net_device *dev, u8 page, u8 chan)
 {
 	struct mac802154_sub_if_data *priv = netdev_priv(dev);
 	struct phy_chan_notify_work *work;
@@ -186,10 +186,12 @@ void mac802154_dev_set_channel(struct net_device *dev, u8 val)
 	BUG_ON(dev->type != ARPHRD_IEEE802154);
 
 	spin_lock_bh(&priv->mib_lock);
-	priv->chan = val;
+	priv->page = page;
+	priv->chan = chan;
 	spin_unlock_bh(&priv->mib_lock);
 
-	if (priv->hw->phy->current_channel != priv->chan) {
+	if (priv->hw->phy->current_channel != priv->chan ||
+	    priv->hw->phy->current_page != priv->page) {
 		work = kzalloc(sizeof(*work), GFP_ATOMIC);
 		if (!work)
 			return;
@@ -198,17 +200,6 @@ void mac802154_dev_set_channel(struct net_device *dev, u8 val)
 		work->dev = dev;
 		queue_work(priv->hw->dev_workqueue, &work->work);
 	}
-}
-
-void mac802154_dev_set_page(struct net_device *dev, u8 page)
-{
-	struct mac802154_sub_if_data *priv = netdev_priv(dev);
-
-	BUG_ON(dev->type != ARPHRD_IEEE802154);
-
-	spin_lock_bh(&priv->mib_lock);
-	priv->page = page;
-	spin_unlock_bh(&priv->mib_lock);
 }
 
 u8 mac802154_dev_get_dsn(const struct net_device *dev)

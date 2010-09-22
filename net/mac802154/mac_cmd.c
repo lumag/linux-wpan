@@ -247,8 +247,7 @@ static int mac802154_mlme_assoc_req(struct net_device *dev,
 
 	/* FIXME: set PIB/MIB info */
 	mac802154_dev_set_pan_id(dev, addr->pan_id);
-	mac802154_dev_set_page(dev, page);
-	mac802154_dev_set_channel(dev, channel);
+	mac802154_dev_set_page_channel(dev, page, channel);
 	mac802154_dev_set_ieee_addr(dev);
 
 	buf[pos++] = IEEE802154_CMD_ASSOCIATION_REQ;
@@ -312,8 +311,7 @@ static int mac802154_mlme_start_req(struct net_device *dev,
 	mac802154_dev_set_pan_id(dev, addr->pan_id);
 	mac802154_dev_set_short_addr(dev, addr->short_addr);
 	mac802154_dev_set_ieee_addr(dev);
-	mac802154_dev_set_page(dev, page);
-	mac802154_dev_set_channel(dev, channel);
+	mac802154_dev_set_page_channel(dev, page, channel);
 
 	/*
 	 * FIXME: add validation for unused parameters to be sane
