@@ -534,7 +534,7 @@ static int _open_dev(struct zb_device *zbdev)
 
 /* Valid channels: 1-16 */
 static int
-ieee802154_serial_set_channel(struct ieee802154_dev *dev, int channel)
+ieee802154_serial_set_channel(struct ieee802154_dev *dev, int page, int channel)
 {
 	struct zb_device *zbdev;
 	int ret = 0;
@@ -547,8 +547,7 @@ ieee802154_serial_set_channel(struct ieee802154_dev *dev, int channel)
 		return -EINVAL;
 	}
 
-	if (mutex_lock_interruptible(&zbdev->mutex))
-		return -EINTR;
+	BUG_ON(page != 0);
 	/* Our channels are actually from 11 to 26
 	 * We have IEEE802.15.4 channel no from 0 to 26.
 	 * channels 0-10 are not valid for us */
@@ -558,6 +557,8 @@ ieee802154_serial_set_channel(struct ieee802154_dev *dev, int channel)
 	 * but additional checking here won't kill, and gcc will
 	 * optimize this stuff anyway. */
 	BUG_ON((channel - 10) < 1 && (channel - 10) > 16);
+	if (mutex_lock_interruptible(&zbdev->mutex))
+		return -EINTR;
 	ret = send_cmd2(zbdev, CMD_SET_CHANNEL, channel - 10);
 	if (ret)
 		goto out;

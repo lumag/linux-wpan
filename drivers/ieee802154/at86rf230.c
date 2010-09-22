@@ -492,7 +492,7 @@ at86rf230_stop(struct ieee802154_dev *dev)
 }
 
 static int
-at86rf230_channel(struct ieee802154_dev *dev, int channel)
+at86rf230_channel(struct ieee802154_dev *dev, int page, int channel)
 {
 	struct at86rf230_local *lp = dev->priv;
 	int rc;
@@ -500,6 +500,7 @@ at86rf230_channel(struct ieee802154_dev *dev, int channel)
 	pr_debug("%s %d\n", __func__, channel);
 	might_sleep();
 
+	BUG_ON(page != 0);
 	BUG_ON(channel < 11);
 	BUG_ON(channel > 26);
 

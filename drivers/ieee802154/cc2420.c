@@ -210,7 +210,7 @@ err_ret:
 	return ret;
 }
 
-static int cc2420_channel(struct ieee802154_dev *dev, int channel)
+static int cc2420_channel(struct ieee802154_dev *dev, int page, int channel)
 {
 	struct cc2420_local *lp = dev->priv;
 	int ret;
@@ -218,6 +218,7 @@ static int cc2420_channel(struct ieee802154_dev *dev, int channel)
 	might_sleep();
 	dev_dbg(&lp->spi->dev, "trying to set channel\n");
 
+	BUG_ON(page != 0);
 	BUG_ON(channel < CC2420_MIN_CHANNEL);
 	BUG_ON(channel > CC2420_MAX_CHANNEL);
 

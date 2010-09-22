@@ -45,8 +45,10 @@ static void mac802154_xmit_worker(struct work_struct *work)
 	BUG_ON(xw->chan == (u8)-1);
 
 	mutex_lock(&xw->priv->phy->pib_lock);
-	if (xw->priv->phy->current_channel != xw->chan) {
+	if (xw->priv->phy->current_channel != xw->chan ||
+	    xw->priv->phy->current_page != xw->page) {
 		res = xw->priv->ops->set_channel(&xw->priv->hw,
+				xw->page,
 				xw->chan);
 		if (res) {
 			pr_debug("set_channel failed\n");

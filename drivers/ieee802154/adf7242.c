@@ -531,7 +531,7 @@ static void adf7242_stop(struct ieee802154_dev *dev)
        DBG(2, "%s :Exit\n", __func__);
 }
 
-static int adf7242_channel(struct ieee802154_dev *dev, int channel)
+static int adf7242_channel(struct ieee802154_dev *dev, int page, int channel)
 {
        struct adf7242_local *lp = dev->priv;
        unsigned long freq;
@@ -541,6 +541,7 @@ static int adf7242_channel(struct ieee802154_dev *dev, int channel)
 
        might_sleep();
 
+       BUG_ON(page != 0);
        BUG_ON(channel < 11);
        BUG_ON(channel > 26);
 

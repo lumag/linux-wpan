@@ -82,7 +82,7 @@ static void phy_chan_notify(struct work_struct *work)
 	struct mac802154_sub_if_data *priv = netdev_priv(nw->dev);
 	int res;
 
-	res = hw->ops->set_channel(&hw->hw, priv->chan);
+	res = hw->ops->set_channel(&hw->hw, priv->page, priv->chan);
 	if (res)
 		pr_debug("set_channel failed\n");
 

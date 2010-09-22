@@ -109,7 +109,7 @@ static void scanner(struct work_struct *work)
 			continue;
 
 		mutex_lock(&hw->phy->pib_lock);
-		ret = hw->ops->set_channel(&hw->hw,  i);
+		ret = hw->ops->set_channel(&hw->hw, sw->page,  i);
 		mutex_unlock(&hw->phy->pib_lock);
 		if (ret)
 			goto exit_error;

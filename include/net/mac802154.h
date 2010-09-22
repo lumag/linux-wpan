@@ -134,6 +134,7 @@ struct ieee802154_ops {
 					struct sk_buff *skb);
 	int		(*ed)(struct ieee802154_dev *dev, u8 *level);
 	int		(*set_channel)(struct ieee802154_dev *dev,
+					int page,
 					int channel);
 	int		(*set_hw_addr_filt)(struct ieee802154_dev *dev,
 					struct ieee802154_hw_addr_filt *filt,

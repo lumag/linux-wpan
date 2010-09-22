@@ -54,10 +54,11 @@ hw_ed(struct ieee802154_dev *dev, u8 *level)
 }
 
 static int
-hw_channel(struct ieee802154_dev *dev, int channel)
+hw_channel(struct ieee802154_dev *dev, int page, int channel)
 {
 	pr_debug("%s %d\n", __func__, channel);
 	might_sleep();
+	dev->phy->current_page = page;
 	dev->phy->current_channel = channel;
 	return 0;
 }
