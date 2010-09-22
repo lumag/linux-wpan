@@ -54,7 +54,7 @@ static netdev_tx_t mac802154_wpan_xmit(struct sk_buff *skb, struct net_device *d
 	if (chan == (u8)-1) /* not init */
 		return NETDEV_TX_OK;
 
-	BUG_ON(page >= 32);
+	BUG_ON(page >= WPAN_NUM_PAGES);
 	BUG_ON(chan >= 27);
 
 	skb->skb_iif = dev->ifindex;

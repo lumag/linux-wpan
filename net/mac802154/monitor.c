@@ -45,7 +45,7 @@ static netdev_tx_t mac802154_monitor_xmit(struct sk_buff *skb, struct net_device
 	if (chan == (u8)-1) /* not init */
 		return NETDEV_TX_OK;
 
-	BUG_ON(page >= 32);
+	BUG_ON(page >= WPAN_NUM_PAGES);
 	BUG_ON(chan >= 27);
 
 	skb->skb_iif = dev->ifindex;

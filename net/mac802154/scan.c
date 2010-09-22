@@ -155,6 +155,8 @@ int mac802154_mlme_scan_req(struct net_device *dev,
 
 	pr_debug("%s()\n", __func__);
 
+	if (page > WPAN_NUM_PAGES)
+		goto inval;
 	if (duration > 14)
 		goto inval;
 	if (channels & ~hw->phy->channels_supported[page])

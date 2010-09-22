@@ -57,7 +57,7 @@ static int ieee802154_nl_fill_phy(struct sk_buff *msg, u32 pid,
 
 	NLA_PUT_U8(msg, IEEE802154_ATTR_PAGE, phy->current_page);
 	NLA_PUT_U8(msg, IEEE802154_ATTR_CHANNEL, phy->current_channel);
-	for (i = 0; i < WPAN_MAX_PAGES; i++) {
+	for (i = 0; i < WPAN_NUM_PAGES; i++) {
 		if (phy->channels_supported[i])
 			buf[pages++] = phy->channels_supported[i] | (i << 27);
 	}
