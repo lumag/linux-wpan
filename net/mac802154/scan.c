@@ -100,6 +100,7 @@ static void scanner(struct work_struct *work)
 {
 	struct scan_work *sw = container_of(work, struct scan_work, work);
 	struct mac802154_priv *hw = mac802154_slave_get_priv(sw->dev);
+	struct mac802154_sub_if_data *priv = netdev_priv(sw->dev);
 	int i;
 	int ret;
 
@@ -112,6 +113,9 @@ static void scanner(struct work_struct *work)
 		mutex_unlock(&hw->phy->pib_lock);
 		if (ret)
 			goto exit_error;
+
+		priv->chan = i;
+		priv->page = sw->page;
 
 		ret = sw->scan_ch(sw, i, sw->duration);
 		if (ret)
