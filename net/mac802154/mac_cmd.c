@@ -37,10 +37,12 @@ static int mac802154_cmd_beacon_req(struct sk_buff *skb)
 {
 	struct ieee802154_addr saddr; /* jeez */
 	int flags = 0;
+	u16 shortaddr;
+
 	if (skb->len != 1)
 		return -EINVAL;
 
-	if (skb->pkt_type != PACKET_HOST)
+	if (skb->pkt_type != PACKET_BROADCAST)
 		return 0;
 
 	/* Checking if we're really PAN coordinator
@@ -53,6 +55,17 @@ static int mac802154_cmd_beacon_req(struct sk_buff *skb)
 	    mac_cb(skb)->da.pan_id != IEEE802154_PANID_BROADCAST ||
 	    mac_cb(skb)->da.short_addr != IEEE802154_ADDR_BROADCAST)
 		return -EINVAL;
+
+	shortaddr = mac802154_dev_get_short_addr(skb->dev);
+	if (shortaddr != IEEE802154_ADDR_BROADCAST &&
+	    shortaddr != IEEE802154_ADDR_UNDEF) {
+		saddr.addr_type = IEEE802154_ADDR_SHORT;
+		saddr.short_addr = shortaddr;
+	} else {
+		saddr.addr_type = IEEE802154_ADDR_LONG;
+		memcpy(saddr.hwaddr, skb->dev->dev_addr, IEEE802154_ADDR_LEN);
+	}
+	saddr.pan_id = mac802154_dev_get_pan_id(skb->dev);
 
 
 	/* 7 bytes of MHR and 1 byte of command frame identifier
