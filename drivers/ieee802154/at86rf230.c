@@ -469,10 +469,14 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 		pr_debug("%s val2 = %x\n", __func__, val);
 	} while (val == STATE_TRANSITION_IN_PROGRESS);
 
-	if (val == state)
-		return 0;
-
-	return -EBUSY;
+	switch (state) {
+	case STATE_FORCE_TX_ON:
+		return (val == STATE_TX_ON ? 0 : -EBUSY);
+	case STATE_FORCE_TRX_OFF:
+		return (val == STATE_TRX_OFF ? 0 : -EBUSY);
+	default:
+		return (val == state ? 0 : -EBUSY);
+	}
 
 err:
 	pr_err("%s error: %d\n", __func__, rc);
@@ -557,6 +561,7 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 err_rx:
 	at86rf230_state(dev, STATE_RX_ON);
 err:
+	pr_err("%s error: %d\n", __func__, rc);
 	spin_lock_irqsave(&lp->lock, flags);
 	lp->is_tx = 0;
 	spin_unlock_irqrestore(&lp->lock, flags);
