@@ -209,6 +209,8 @@ void ieee802154_free_device(struct ieee802154_dev *hw)
 	BUG_ON(!list_empty(&priv->slaves));
 
 	wpan_phy_free(priv->phy);
+
+	mutex_destroy(&priv->slaves_mtx);
 }
 EXPORT_SYMBOL(ieee802154_free_device);
 
