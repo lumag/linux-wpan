@@ -389,26 +389,40 @@ at86rf230_read_fbuf(struct at86rf230_local *lp, u8 *data, u8 *len, u8 *lqi)
 		.len		= 2,
 		.tx_buf		= buf,
 		.rx_buf		= buf,
-
+	};
+	struct spi_transfer xfer_head1 = {
+		.len		= 2,
+		.tx_buf		= buf,
+		.rx_buf		= buf,
 	};
 	struct spi_transfer xfer_buf = {
-		.len		= *len,
+		.len		= 0,
 		.rx_buf		= data,
 	};
 
 	mutex_lock(&lp->bmux);
+
 	buf[0] = CMD_FB;
 	buf[1] = 0x00;
 
-	dev_vdbg(&lp->spi->dev, "buf[0] = %02x\n", buf[0]);
-	dev_vdbg(&lp->spi->dev, "buf[1] = %02x\n", buf[1]);
-
 	spi_message_init(&msg);
 	spi_message_add_tail(&xfer_head, &msg);
-	spi_message_add_tail(&xfer_buf, &msg);
 
 	status = spi_sync(lp->spi, &msg);
 	dev_vdbg(&lp->spi->dev, "status = %d\n", status);
+
+	xfer_buf.len = *(buf + 1) + 1;
+	*len = buf[1];
+
+	buf[0] = CMD_FB;
+	buf[1] = 0x00;
+
+	spi_message_init(&msg);
+	spi_message_add_tail(&xfer_head1, &msg);
+	spi_message_add_tail(&xfer_buf, &msg);
+
+	status = spi_sync(lp->spi, &msg);
+
 	if (msg.status)
 		status = msg.status;
 	dev_vdbg(&lp->spi->dev, "status = %d\n", status);
@@ -418,8 +432,6 @@ at86rf230_read_fbuf(struct at86rf230_local *lp, u8 *data, u8 *len, u8 *lqi)
 	if (!status) {
 		if (lqi && *len > lp->buf[1])
 			*lqi = data[lp->buf[1]];
-
-		*len = lp->buf[1];
 	}
 
 	mutex_unlock(&lp->bmux);
@@ -456,6 +468,11 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 
 	if (val == state)
 		return 0;
+
+	/* Here, because this protection will be released after fb read */
+	/* FIXME: process return status */
+	if (state == STATE_RX_ON)
+		rc = at86rf230_write_subreg(lp, SR_RX_SAFE_MODE, 1);
 
 	/* state is equal to phy states */
 	rc = at86rf230_write_subreg(lp, SR_TRX_CMD, state);
@@ -571,8 +588,7 @@ err:
 
 static int at86rf230_rx(struct at86rf230_local *lp)
 {
-	u8 len = 128;
-	u8 lqi = 0;
+	u8 len = 128, lqi = 0;
 	int rc;
 	struct sk_buff *skb;
 
@@ -580,24 +596,27 @@ static int at86rf230_rx(struct at86rf230_local *lp)
 	if (!skb)
 		return -ENOMEM;
 
+	/* FIXME: process return status */
+	rc = at86rf230_write_subreg(lp, SR_RX_PDT_DIS, 1);
 	rc = at86rf230_read_fbuf(lp, skb_put(skb, len), &len, &lqi);
-	if (len < 2) {
-		kfree_skb(skb);
-		return -EINVAL;
-	}
+	rc = at86rf230_write_subreg(lp, SR_RX_PDT_DIS, 0);
+
+	if (len < 2)
+		goto err;
 
 	skb_trim(skb, len-2); /* We do not put CRC into the frame */
 
-	if (len < 2) {
-		kfree_skb(skb);
-		return -EINVAL;
-	}
 
 	ieee802154_rx_irqsafe(lp->dev, skb, lqi);
 
 	dev_dbg(&lp->spi->dev, "READ_FBUF: %d %d %x\n", rc, len, lqi);
 
 	return 0;
+err:
+	pr_debug("%s: received frame is too small\n", __func__);
+
+	kfree_skb(skb);
+	return -EINVAL;
 }
 
 static struct ieee802154_ops at86rf230_ops = {
