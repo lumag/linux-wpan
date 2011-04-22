@@ -70,8 +70,11 @@ static int scan_passive(struct scan_work *work, int channel, u8 duration)
 	unsigned long j;
 	pr_debug("passive scan channel %d duration %d\n", channel, duration);
 
-	/* Hope 2 msecs will be enough for scan */
-	j = msecs_to_jiffies(2);
+	/* Hope 5 msecs will be enough for scan */
+	j = msecs_to_jiffies(5);
+
+	set_current_state(TASK_UNINTERRUPTIBLE); /* XXX: Is this necessary? */
+
 	while (j > 0)
 		j = schedule_timeout(j);
 
@@ -82,11 +85,16 @@ static int scan_passive(struct scan_work *work, int channel, u8 duration)
  * and waiting for beacons which is useful for collecting LWPAN information */
 static int scan_active(struct scan_work *work, int channel, u8 duration)
 {
+	struct mac802154_priv *hw = mac802154_slave_get_priv(work->dev);
 	int ret;
+
 	pr_debug("active scan channel %d duration %d\n", channel, duration);
+
 	ret = mac802154_send_beacon_req(work->dev);
 	if (ret)
 		return ret;
+
+	flush_workqueue(hw->dev_workqueue);
 	return scan_passive(work, channel, duration);
 }
 
@@ -191,7 +199,7 @@ int mac802154_mlme_scan_req(struct net_device *dev,
 	}
 
 	INIT_WORK(&work->work, scanner);
-	queue_work(hw->dev_workqueue, &work->work);
+	schedule_work(&work->work);
 
 	return 0;
 
