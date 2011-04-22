@@ -425,6 +425,9 @@ static int mac802154_subif_frame(struct mac802154_sub_if_data *sdata,
 
 	skb->dev = sdata->dev;
 
+	sdata->dev->stats.rx_packets++;
+	sdata->dev->stats.rx_bytes += skb->len;
+
 	if (skb->pkt_type == PACKET_HOST && mac_cb_is_ackreq(skb) &&
 			!(sdata->hw->hw.flags & IEEE802154_HW_AACK))
 		dev_warn(&sdata->dev->dev,
