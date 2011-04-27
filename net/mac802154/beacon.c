@@ -221,7 +221,7 @@ static int parse_beacon_frame(struct sk_buff *skb, u8 *buf,
 	pd->lqi = mac_cb(skb)->lqi;
 	pd->sf = sf;
 	/* FIXME: make sure we do it right */
-	memcpy(&pd->addr, &mac_cb(skb)->da, sizeof(struct ieee802154_addr));
+	memcpy(&pd->addr, &mac_cb(skb)->sa, sizeof(struct ieee802154_addr));
 
 	/* Supplying our nitifiers with data */
 	ieee802154_nl_beacon_indic(skb->dev, pd->addr.pan_id,
