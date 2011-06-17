@@ -455,9 +455,17 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 	struct at86rf230_local *lp = dev->priv;
 	int rc;
 	u8 val;
+	u8 desired_status;
 
 	pr_debug("%s %d\n", __func__/*, priv->cur_state*/, state);
 	might_sleep();
+
+	if (state == STATE_FORCE_TX_ON)
+		desired_status = STATE_TX_ON;
+	else if (state == STATE_FORCE_TRX_OFF)
+		desired_status = STATE_TRX_OFF;
+	else
+		desired_status = state;
 
 	do {
 		rc = at86rf230_read_subreg(lp, SR_TRX_STATUS, &val);
@@ -466,7 +474,7 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 		pr_debug("%s val1 = %x\n", __func__, val);
 	} while (val == STATE_TRANSITION_IN_PROGRESS);
 
-	if (val == state)
+	if (val == desired_status)
 		return 0;
 
 	/* state is equal to phy states */
@@ -481,14 +489,13 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 		pr_debug("%s val2 = %x\n", __func__, val);
 	} while (val == STATE_TRANSITION_IN_PROGRESS);
 
-	switch (state) {
-	case STATE_FORCE_TX_ON:
-		return (val == STATE_TX_ON ? 0 : -EBUSY);
-	case STATE_FORCE_TRX_OFF:
-		return (val == STATE_TRX_OFF ? 0 : -EBUSY);
-	default:
-		return (val == state ? 0 : -EBUSY);
-	}
+
+	if (val == desired_status)
+		return 0;
+
+	pr_err("%s unexpected state change: %d, asked for %d\n", __func__,
+			val, state);
+	return -EBUSY;
 
 err:
 	pr_err("%s error: %d\n", __func__, rc);
