@@ -505,6 +505,7 @@ err:
 static int
 at86rf230_start(struct ieee802154_dev *dev)
 {
+	struct at86rf230_local *lp = dev->priv;
 	u8 rc;
 
 	rc = at86rf230_write_subreg(lp, SR_RX_SAFE_MODE, 1);
