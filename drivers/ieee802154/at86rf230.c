@@ -469,11 +469,6 @@ at86rf230_state(struct ieee802154_dev *dev, int state)
 	if (val == state)
 		return 0;
 
-	/* Here, because this protection will be released after fb read */
-	/* FIXME: process return status */
-	if (state == STATE_RX_ON)
-		rc = at86rf230_write_subreg(lp, SR_RX_SAFE_MODE, 1);
-
 	/* state is equal to phy states */
 	rc = at86rf230_write_subreg(lp, SR_TRX_CMD, state);
 	if (rc)
@@ -503,6 +498,11 @@ err:
 static int
 at86rf230_start(struct ieee802154_dev *dev)
 {
+	u8 rc;
+
+	rc = at86rf230_write_subreg(lp, SR_RX_SAFE_MODE, 1);
+	if (rc)
+		return rc;
 	return at86rf230_state(dev, STATE_RX_ON);
 }
 
@@ -571,12 +571,12 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 	if (rc < 0)
 		goto err_rx;
 
-	rc = at86rf230_state(dev, STATE_RX_ON);
+	rc = at86rf230_start(dev);
 
 	return rc;
 
 err_rx:
-	at86rf230_state(dev, STATE_RX_ON);
+	at86rf230_start(dev);
 err:
 	pr_err("%s error: %d\n", __func__, rc);
 	spin_lock_irqsave(&lp->lock, flags);
@@ -599,6 +599,7 @@ static int at86rf230_rx(struct at86rf230_local *lp)
 	/* FIXME: process return status */
 	rc = at86rf230_write_subreg(lp, SR_RX_PDT_DIS, 1);
 	rc = at86rf230_read_fbuf(lp, skb_put(skb, len), &len, &lqi);
+	rc = at86rf230_write_subreg(lp, SR_RX_SAFE_MODE, 1);
 	rc = at86rf230_write_subreg(lp, SR_RX_PDT_DIS, 0);
 
 	if (len < 2)
