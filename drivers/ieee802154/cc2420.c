@@ -85,7 +85,8 @@ struct cc2420_local {
 	struct work_struct fifop_irqwork;
 	struct work_struct sfd_irqwork;
 	spinlock_t lock;
-	unsigned irq_disabled:1;/* P:lock */
+	unsigned fifop_irq_disabled:1;/* P:lock */
+	unsigned sfd_irq_disabled:1;/* P:lock */
 	unsigned is_tx:1;		/* P:lock */
 
 	struct completion tx_complete;
@@ -569,22 +570,18 @@ static void cc2420_unregister(struct cc2420_local *lp)
 	ieee802154_free_device(lp->dev);
 }
 
-static irqreturn_t cc2420_isr(int irq, void *data)
+static irqreturn_t cc2420_fifop_isr(int irq, void *data)
 {
 	struct cc2420_local *lp = data;
 
 	spin_lock(&lp->lock);
-	if (!lp->irq_disabled) {
+	if (!lp->fifop_irq_disabled) {
 		disable_irq_nosync(irq);
-		lp->irq_disabled = 1;
+		lp->fifop_irq_disabled = 1;
 	}
 	spin_unlock(&lp->lock);
 
-	if (irq == lp->sfd_irq)
-		schedule_work(&lp->sfd_irqwork);
-
-	if (irq == lp->fifop_irq)
-		schedule_work(&lp->fifop_irqwork);
+	schedule_work(&lp->fifop_irqwork);
 
 	return IRQ_HANDLED;
 }
@@ -606,11 +603,27 @@ static void cc2420_fifop_irqwork(struct work_struct *work)
 	cc2420_cmd_strobe(lp, CC2420_SFLUSHRX);
 
 	spin_lock_irqsave(&lp->lock, flags);
-	if (lp->irq_disabled) {
-		lp->irq_disabled = 0;
+	if (lp->fifop_irq_disabled) {
+		lp->fifop_irq_disabled = 0;
 		enable_irq(lp->fifop_irq);
 	}
 	spin_unlock_irqrestore(&lp->lock, flags);
+}
+
+static irqreturn_t cc2420_sfd_isr(int irq, void *data)
+{
+	struct cc2420_local *lp = data;
+
+	spin_lock(&lp->lock);
+	if (!lp->sfd_irq_disabled) {
+		disable_irq_nosync(irq);
+		lp->sfd_irq_disabled = 1;
+	}
+	spin_unlock(&lp->lock);
+
+	schedule_work(&lp->sfd_irqwork);
+
+	return IRQ_HANDLED;
 }
 
 static void cc2420_sfd_irqwork(struct work_struct *work)
@@ -631,8 +644,8 @@ static void cc2420_sfd_irqwork(struct work_struct *work)
 	}
 
 	spin_lock_irqsave(&lp->lock, flags);
-	if (lp->irq_disabled) {
-		lp->irq_disabled = 0;
+	if (lp->sfd_irq_disabled) {
+		lp->sfd_irq_disabled = 0;
 		enable_irq(lp->sfd_irq);
 	}
 	spin_unlock_irqrestore(&lp->lock, flags);
@@ -782,7 +795,7 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 	lp->sfd_irq = gpio_to_irq(lp->pdata->sfd);
 
 	ret = request_irq(lp->fifop_irq,
-					  cc2420_isr,
+					  cc2420_fifop_isr,
 					  IRQF_TRIGGER_RISING | IRQF_SHARED,
 					  dev_name(&spi->dev),
 					  lp);
@@ -792,7 +805,7 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 	}
 
 	ret = request_irq(lp->sfd_irq,
-					  cc2420_isr,
+					  cc2420_sfd_isr,
 					  IRQF_TRIGGER_FALLING,
 					  dev_name(&spi->dev),
 					  lp);
