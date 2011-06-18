@@ -406,6 +406,7 @@ static int cc2420_rx(struct cc2420_local *lp)
 {
 	u8 len = 128;
 	u8 lqi = 0; /* link quality */
+	u8 fcs = 0;
 	int rc;
 	struct sk_buff *skb;
 
@@ -415,6 +416,14 @@ static int cc2420_rx(struct cc2420_local *lp)
 
 	rc = cc2420_read_rxfifo(lp, skb_put(skb, len), &len, &lqi);
 	if (len < 2) {
+		kfree_skb(skb);
+		return -EINVAL;
+	}
+
+	/* Check FCS flag */
+	fcs = skb->data[len-1];
+	if (!(fcs >> 7)) {
+		dev_dbg(&lp->spi->dev, "Received packet with wrong FCS; ingnore.\n");
 		kfree_skb(skb);
 		return -EINVAL;
 	}
