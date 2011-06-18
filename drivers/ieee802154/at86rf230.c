@@ -56,8 +56,7 @@ struct at86rf230_local {
 
 	struct ieee802154_dev *dev;
 
-	spinlock_t lock;
-	unsigned is_tx:1; /* P: lock */
+	volatile unsigned is_tx:1; /* P: lock */
 };
 
 
@@ -362,22 +361,23 @@ static int
 at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 {
 	struct at86rf230_local *lp = dev->priv;
-	int rc;
-	unsigned long flags;
+	int rc, rc2;
 
 	pr_debug("%s\n", __func__);
 
 	might_sleep();
 
-	spin_lock_irqsave(&lp->lock, flags);
 	BUG_ON(lp->is_tx);
-	lp->is_tx = 1;
 	INIT_COMPLETION(lp->tx_complete);
-	spin_unlock_irqrestore(&lp->lock, flags);
 
 	rc = at86rf230_state(dev, STATE_FORCE_TX_ON);
 	if (rc)
 		goto err;
+
+	synchronize_irq(lp->spi->irq);
+	flush_work(&lp->irqwork);
+
+	lp->is_tx = 1;
 
 	rc = at86rf230_write_fbuf(lp, skb->data, skb->len);
 	if (rc)
@@ -395,19 +395,16 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 
 	rc = wait_for_completion_interruptible(&lp->tx_complete);
 	if (rc < 0)
-		goto err_rx;
-
-	rc = at86rf230_start(dev);
-
-	return rc;
+		at86rf230_state(dev, STATE_FORCE_TX_ON);
 
 err_rx:
-	at86rf230_start(dev);
+	rc2 = at86rf230_start(dev);
+	if (!rc)
+		rc = rc2;
 err:
-	pr_err("%s error: %d\n", __func__, rc);
-	spin_lock_irqsave(&lp->lock, flags);
+	if (rc)
+		pr_err("%s error: %d\n", __func__, rc);
 	lp->is_tx = 0;
-	spin_unlock_irqrestore(&lp->lock, flags);
 
 	return rc;
 }
@@ -461,7 +458,6 @@ static void at86rf230_irqwork(struct work_struct *work)
 		container_of(work, struct at86rf230_local, irqwork);
 	u8 status = 0, val;
 	int rc;
-	unsigned long flags;
 
 	dev_dbg(&lp->spi->dev, "IRQ Worker\n");
 
@@ -477,15 +473,10 @@ static void at86rf230_irqwork(struct work_struct *work)
 
 		if (status & IRQ_TRX_END) {
 			status &= ~IRQ_TRX_END;
-			spin_lock_irqsave(&lp->lock, flags);
-			if (lp->is_tx) {
-				lp->is_tx = 0;
-				spin_unlock_irqrestore(&lp->lock, flags);
+			if (lp->is_tx)
 				complete(&lp->tx_complete);
-			} else {
-				spin_unlock_irqrestore(&lp->lock, flags);
+			else
 				at86rf230_rx(lp);
-			}
 		}
 
 	} while (status != 0);
@@ -667,7 +658,6 @@ static int __devinit at86rf230_probe(struct spi_device *spi)
 
 	mutex_init(&lp->bmux);
 	INIT_WORK(&lp->irqwork, at86rf230_irqwork);
-	spin_lock_init(&lp->lock);
 	init_completion(&lp->tx_complete);
 
 	spi_set_drvdata(spi, lp);
