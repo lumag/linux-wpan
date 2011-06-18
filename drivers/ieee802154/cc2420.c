@@ -449,10 +449,20 @@ cc2420_set_hw_addr_filt(struct ieee802154_dev *dev,
 
 	might_sleep();
 
-	if (changed & IEEE802515_IEEEADDR_CHANGED)
+	if (changed & IEEE802515_IEEEADDR_CHANGED) {
+		u8 ieee_addr[8];
+		ieee_addr[0] = filt->ieee_addr[7];
+		ieee_addr[1] = filt->ieee_addr[6];
+		ieee_addr[2] = filt->ieee_addr[5];
+		ieee_addr[3] = filt->ieee_addr[4];
+		ieee_addr[4] = filt->ieee_addr[3];
+		ieee_addr[5] = filt->ieee_addr[2];
+		ieee_addr[6] = filt->ieee_addr[1];
+		ieee_addr[7] = filt->ieee_addr[0];
 		cc2420_write_ram(lp, CC2420_RAM_IEEEADR,
 						 IEEE802154_ALEN,
-						 filt->ieee_addr);
+						 ieee_addr);
+	}
 
 	if (changed & IEEE802515_SADDR_CHANGED) {
 		u8 short_addr[2];
@@ -479,7 +489,7 @@ cc2420_set_hw_addr_filt(struct ieee802154_dev *dev,
 		else
 			reg &= ~(1 << CC2420_MDMCTRL0_PANCRD);
 		cc2420_write_16_bit_reg_partial(lp, CC2420_MDMCTRL0,
-										reg, 1 << CC2420_MDMCTRL0_PANCRD);
+						reg, 1 << CC2420_MDMCTRL0_PANCRD);
 	}
 
 	return 0;
@@ -538,7 +548,7 @@ static int cc2420_register(struct cc2420_local *lp)
 
 	/* We do support only 2.4 Ghz */
 	lp->dev->phy->channels_supported[0] = 0x7FFF800;
-	lp->dev->flags = IEEE802154_HW_OMIT_CKSUM;
+	lp->dev->flags = IEEE802154_HW_OMIT_CKSUM | IEEE802154_HW_AACK;
 
 	dev_dbg(&lp->spi->dev, "registered cc2420\n");
 	ret = ieee802154_register_device(lp->dev);
@@ -790,6 +800,10 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "could not get sfd irq?\n");
 		goto err_free_sfd_irq;
 	}
+
+	dev_dbg(&lp->spi->dev, "Enable hardware AUTO ACK\n");
+	cc2420_write_16_bit_reg_partial(lp, CC2420_MDMCTRL0, 1 <<
+					CC2420_MDMCTRL0_AUTOACK, 1 << CC2420_MDMCTRL0_AUTOACK);
 
 	dev_info(&lp->spi->dev, "Set fifo threshold to 127\n");
 	cc2420_write_16_bit_reg_partial(lp, CC2420_IOCFG0, 127, CC2420_FIFOP_THR_MASK);
