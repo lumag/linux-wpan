@@ -593,8 +593,7 @@ static int at86rf230_resume(struct spi_device *spi)
 #ifdef CONFIG_OF
 static int at86rf230_fill_data(struct spi_device *spi)
 {
-	struct device *dev = &spi->dev;
-	struct device_node *np = dev_archdata_get_node(&dev->archdata);
+	struct device_node *np = spi->dev.of_node;
 	struct at86rf230_local *lp = spi_get_drvdata(spi);
 	struct at86rf230_platform_data *pdata = spi->dev.platform_data;
 	enum of_gpio_flags gpio_flags;
