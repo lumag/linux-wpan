@@ -26,7 +26,6 @@
 #include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
-#include <linux/spinlock.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/at86rf230.h>
 
@@ -56,7 +55,7 @@ struct at86rf230_local {
 
 	struct ieee802154_dev *dev;
 
-	volatile unsigned is_tx:1; /* P: lock */
+	volatile unsigned is_tx:1;
 };
 
 
@@ -357,11 +356,14 @@ at86rf230_channel(struct ieee802154_dev *dev, int page, int channel)
 	return 0;
 }
 
+/* FIXME:
+ * This function currently is a mess. It uses flush_work to guard
+ * against concurrent irqwork, etc. One has to use mutexes intead. */
 static int
 at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 {
 	struct at86rf230_local *lp = dev->priv;
-	int rc, rc2;
+	int rc;
 
 	pr_debug("%s\n", __func__);
 
@@ -385,27 +387,37 @@ at86rf230_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 
 	if (gpio_is_valid(lp->slp_tr)) {
 		gpio_set_value(lp->slp_tr, 1);
+		udelay(80); /* > 62.5 */
+		gpio_set_value(lp->slp_tr, 0);
 	} else {
 		rc = at86rf230_write_subreg(lp, SR_TRX_CMD, STATE_BUSY_TX);
 		if (rc)
 			goto err_rx;
 	}
 
-	gpio_set_value(lp->slp_tr, 0);
-
+	/* FIXME: the logic is really strange here. Datasheet doesn't
+	 * provide us enough info about behaviour in such cases.
+	 * Basically either we were interrupted here, or we have lost
+	 * the interrupt. Most probably this should be changed to
+	 * wait_for_completion_timeout() and handle it's results
+	 */
 	rc = wait_for_completion_interruptible(&lp->tx_complete);
-	if (rc < 0) {
-		at86rf230_state(dev, STATE_FORCE_TX_ON);
-		synchronize_irq(lp->spi->irq);
-		flush_work(&lp->irqwork);
-	}
+	if (rc < 0)
+		goto err_state;
 
-err_rx:
 	lp->is_tx = 0;
 
-	rc2 = at86rf230_start(dev);
-	if (!rc)
-		rc = rc2;
+	rc = at86rf230_start(dev);
+	return rc;
+
+err_state:
+	/* try to recover from possibly problematic state */
+	at86rf230_state(dev, STATE_FORCE_TX_ON);
+	synchronize_irq(lp->spi->irq);
+	flush_work(&lp->irqwork);
+	lp->is_tx = 0;
+err_rx:
+	at86rf230_start(dev);
 err:
 	if (rc)
 		pr_err("%s error: %d\n", __func__, rc);
