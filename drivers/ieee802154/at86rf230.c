@@ -837,7 +837,7 @@ static int __devinit at86rf230_probe(struct spi_device *spi)
 	const char *chip;
 	int supported = 0;
 
-	if (!spi->irq) {
+	if (spi->irq < 0) {
 		dev_err(&spi->dev, "no IRQ specified\n");
 		return -EINVAL;
 	}
