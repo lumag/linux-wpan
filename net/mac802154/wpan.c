@@ -411,11 +411,11 @@ static int mac802154_subif_frame(struct mac802154_sub_if_data *sdata,
 		if (mac_cb(skb)->da.pan_id != sdata->pan_id &&
 		    mac_cb(skb)->da.pan_id != IEEE802154_PANID_BROADCAST)
 			skb->pkt_type = PACKET_OTHERHOST;
-		else if (mac_cb(skb)->da.short_addr == sdata->short_addr)
-			skb->pkt_type = PACKET_HOST;
 		else if (mac_cb(skb)->da.short_addr ==
 					IEEE802154_ADDR_BROADCAST)
 			skb->pkt_type = PACKET_BROADCAST;
+		else if (mac_cb(skb)->da.short_addr == sdata->short_addr)
+			skb->pkt_type = PACKET_HOST;
 		else
 			skb->pkt_type = PACKET_OTHERHOST;
 		break;
