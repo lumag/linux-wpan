@@ -50,7 +50,7 @@
 #include <linux/if_arp.h>
 #include <linux/if_arcnet.h>
 #include <linux/if_infiniband.h>
-#include <net/af_ieee802154.h>
+#include <linux/if_ieee802154.h>
 #include <linux/route.h>
 #include <linux/inetdevice.h>
 #include <linux/init.h>
@@ -1532,7 +1532,7 @@ static int addrconf_ifid_eui48(u8 *eui, struct net_device *dev)
 
 static int addrconf_ifid_eui64(u8 *eui, struct net_device *dev)
 {
-	if (dev->addr_len != IEEE802154_ADDR_LEN)
+	if (dev->addr_len != IEEE802154_ALEN)
 		return -1;
 	memcpy(eui, dev->dev_addr, 8);
 	return 0;
