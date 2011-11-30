@@ -31,7 +31,8 @@ struct ieee802154_dev *ieee802154_alloc_device(size_t priv_size,
 	struct wpan_phy *phy;
 	struct mac802154_priv *priv;
 
-	if (!ops || !ops->xmit || !ops->ed || !ops->start || !ops->stop) {
+	if (!ops || !ops->xmit || !ops->ed || !ops->start || !ops->stop ||
+	    !ops->set_channel) {
 		printk(KERN_ERR
 			"Undefined IEEE802.15.4 device operations\n");
 		return NULL;
