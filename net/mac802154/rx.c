@@ -59,6 +59,7 @@ mac802154_subif_rx(struct ieee802154_dev *hw, struct sk_buff *skb, u8 lqi)
 		}
 		skb_trim(skb, skb->len - 2); /* CRC */
 	}
+	mac802154_wpans_rx(priv, skb);
 
 out:
 	dev_kfree_skb(skb);
