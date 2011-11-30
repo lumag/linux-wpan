@@ -83,7 +83,12 @@ struct wpan_phy;
  * get_phy should increment the reference counting on returned phy.
  * Use wpan_wpy_put to put that reference.
  */
+struct simple_mlme_ops {
+	struct wpan_phy *(*get_phy)(const struct net_device *dev);
+};
 struct ieee802154_mlme_ops {
+	struct simple_mlme_ops wpan_ops;
+
 	int (*assoc_req)(struct net_device *dev,
 			struct ieee802154_addr *addr,
 			u8 channel, u8 page, u8 cap);
@@ -111,6 +116,12 @@ struct ieee802154_mlme_ops {
 	u8 (*get_dsn)(const struct net_device *dev);
 	u8 (*get_bsn)(const struct net_device *dev);
 };
+
+static inline struct simple_mlme_ops *simple_mlme_ops(
+		const struct net_device *dev)
+{
+	return dev->ml_priv;
+}
 
 static inline struct ieee802154_mlme_ops *ieee802154_mlme_ops(
 		const struct net_device *dev)
