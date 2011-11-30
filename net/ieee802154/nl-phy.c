@@ -179,7 +179,7 @@ static int ieee802154_add_iface(struct sk_buff *skb,
 	const char *devname;
 	int rc = -ENOBUFS;
 	struct net_device *dev;
-        int type = -EINVAL;
+        int type = IEEE802154_DEV_WPAN;
 
 	pr_debug("%s\n", __func__);
 
