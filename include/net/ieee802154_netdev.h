@@ -83,6 +83,14 @@ struct wpan_phy;
  * get_phy should increment the reference counting on returned phy.
  * Use wpan_wpy_put to put that reference.
  */
+
+/*
+ * The IEEE 802.15.4 standard defines 2 type of devices:
+ * - FFD - full functionality device
+ * - RFD - reduce functionality device
+ *
+ * So 2 sets of mlme operations are needed
+ */
 struct ieee802154_mlme_ops {
 	int (*assoc_req)(struct net_device *dev,
 			struct ieee802154_addr *addr,
@@ -112,12 +120,20 @@ struct ieee802154_mlme_ops {
 	u8 (*get_bsn)(const struct net_device *dev);
 };
 
+struct ieee802154_reduced_mlme_ops {
+	struct wpan_phy *(*get_phy)(const struct net_device *dev);
+};
+
 static inline struct ieee802154_mlme_ops *ieee802154_mlme_ops(
 		const struct net_device *dev)
 {
 	return dev->ml_priv;
 }
 
+static inline struct ieee802154_reduced_mlme_ops *ieee802154_reduced_mlme_ops(
+		const struct net_device *dev)
+{
+	return dev->ml_priv;
+}
+
 #endif
-
-
