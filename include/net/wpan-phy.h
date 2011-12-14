@@ -24,6 +24,8 @@
 #include <linux/netdevice.h>
 #include <linux/mutex.h>
 
+#define WPAN_NUM_PAGES 32
+
 struct wpan_phy {
 	struct mutex pib_lock;
 
