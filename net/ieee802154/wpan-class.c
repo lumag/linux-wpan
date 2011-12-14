@@ -21,6 +21,7 @@
 #include <linux/module.h>
 #include <linux/device.h>
 
+#include <net/netlink.h>
 #include <net/wpan-phy.h>
 
 #include "ieee802154.h"
