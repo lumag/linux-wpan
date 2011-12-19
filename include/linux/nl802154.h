@@ -126,6 +126,7 @@ enum {
 #define IEEE802154_CMD_MAX (__IEEE802154_CMD_MAX - 1)
 
 enum {
+	IEEE802154_DEV_MONITOR = 1, /* for compatibility with WireShark */
 	__IEEE802154_DEV_MAX,
 };
 

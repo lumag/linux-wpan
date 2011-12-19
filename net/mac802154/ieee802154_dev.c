@@ -126,8 +126,11 @@ static struct net_device *mac802154_add_iface(struct wpan_phy *phy,
 	struct net_device *dev;
 	int err = -ENOMEM;
 
-	/* No devices is currently supported */
 	switch (type) {
+	case IEEE802154_DEV_MONITOR:
+		dev = alloc_netdev(sizeof(struct mac802154_sub_if_data),
+					name, mac802154_monitor_setup);
+		break;
 	default:
 		dev = NULL;
 		err = -EINVAL;
