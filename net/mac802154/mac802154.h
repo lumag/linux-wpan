@@ -58,4 +58,9 @@ enum {
 
 #define mac802154_to_priv(_hw)	container_of(_hw, struct mac802154_priv, hw)
 
+#define MAC802154_MAX_XMIT_ATTEMPTS	3
+
+netdev_tx_t mac802154_tx(struct mac802154_priv *priv, struct sk_buff *skb,
+							u8 page, u8 chan);
+
 #endif /* MAC802154_H */
