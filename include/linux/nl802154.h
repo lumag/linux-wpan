@@ -127,6 +127,17 @@ enum {
 
 enum {
 	__IEEE802154_DEV_INVALID = -1,
+
+	/*
+	 * Three device types are currently available in linux-zigbee
+	 * project: WPAN = 0, MONITOR = 1 and SMAC = 2.
+	 * All these values are already in use by other software (iz tools,
+	 * WireShark) so we should keep compatibility with it by assigning
+	 * proper values. Currently only monitor device is added.
+	 */
+
+	IEEE802154_DEV_MONITOR = 1,
+
 	__IEEE802154_DEV_MAX,
 };
 
