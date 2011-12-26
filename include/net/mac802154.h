@@ -144,4 +144,10 @@ struct ieee802154_ops {
 				     u8 addr[IEEE802154_ADDR_LEN]);
 };
 
+struct ieee802154_dev *
+ieee802154_alloc_device(size_t priv_data_lex, struct ieee802154_ops *ops);
+void ieee802154_free_device(struct ieee802154_dev *dev);
+int ieee802154_register_device(struct ieee802154_dev *dev);
+void ieee802154_unregister_device(struct ieee802154_dev *dev);
+
 #endif /* NET_MAC802154_H */
