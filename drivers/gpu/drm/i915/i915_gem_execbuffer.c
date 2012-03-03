@@ -32,6 +32,7 @@
 #include "i915_drv.h"
 #include "i915_trace.h"
 #include "intel_drv.h"
+#include <linux/dma_remapping.h>
 
 struct change_domains {
 	uint32_t invalidate_domains;
@@ -186,10 +187,6 @@ i915_gem_object_set_to_gpu_domain(struct drm_i915_gem_object *obj,
 	invalidate_domains |= obj->base.pending_read_domains & ~obj->base.read_domains;
 	if ((flush_domains | invalidate_domains) & I915_GEM_DOMAIN_CPU)
 		i915_gem_clflush_object(obj);
-
-	/* blow away mappings if mapped through GTT */
-	if ((flush_domains | invalidate_domains) & I915_GEM_DOMAIN_GTT)
-		i915_gem_release_mmap(obj);
 
 	if (obj->base.pending_write_domain)
 		cd->flips |= atomic_read(&obj->pending_flip);
@@ -750,6 +747,22 @@ i915_gem_execbuffer_flush(struct drm_device *dev,
 	return 0;
 }
 
+static bool
+intel_enable_semaphores(struct drm_device *dev)
+{
+	if (INTEL_INFO(dev)->gen < 6)
+		return 0;
+
+	if (i915_semaphores >= 0)
+		return i915_semaphores;
+
+	/* Disable semaphores on SNB */
+	if (INTEL_INFO(dev)->gen == 6)
+		return 0;
+
+	return 1;
+}
+
 static int
 i915_gem_execbuffer_sync_rings(struct drm_i915_gem_object *obj,
 			       struct intel_ring_buffer *to)
@@ -762,7 +775,7 @@ i915_gem_execbuffer_sync_rings(struct drm_i915_gem_object *obj,
 		return 0;
 
 	/* XXX gpu semaphores are implicated in various hard hangs on SNB */
-	if (INTEL_INFO(obj->base.dev)->gen < 6 || !i915_semaphores)
+	if (!intel_enable_semaphores(obj->base.dev))
 		return i915_gem_object_wait_rendering(obj);
 
 	idx = intel_ring_sync_index(from, to);
@@ -788,7 +801,8 @@ i915_gem_execbuffer_sync_rings(struct drm_i915_gem_object *obj,
 	}
 
 	from->sync_seqno[idx] = seqno;
-	return intel_ring_sync(to, from, seqno - 1);
+
+	return to->sync_to(to, from, seqno - 1);
 }
 
 static int

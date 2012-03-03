@@ -17,7 +17,6 @@
 #include <linux/quotaops.h>
 #include <linux/slab.h>
 #include "ext4_jbd2.h"
-#include "ext4_extents.h"
 #include "ext4.h"
 
 /**
@@ -1002,12 +1001,12 @@ mext_check_arguments(struct inode *orig_inode,
 		return -EINVAL;
 	}
 
-	if ((orig_start > EXT_MAX_BLOCK) ||
-	    (donor_start > EXT_MAX_BLOCK) ||
-	    (*len > EXT_MAX_BLOCK) ||
-	    (orig_start + *len > EXT_MAX_BLOCK))  {
+	if ((orig_start >= EXT_MAX_BLOCKS) ||
+	    (donor_start >= EXT_MAX_BLOCKS) ||
+	    (*len > EXT_MAX_BLOCKS) ||
+	    (orig_start + *len >= EXT_MAX_BLOCKS))  {
 		ext4_debug("ext4 move extent: Can't handle over [%u] blocks "
-			"[ino:orig %lu, donor %lu]\n", EXT_MAX_BLOCK,
+			"[ino:orig %lu, donor %lu]\n", EXT_MAX_BLOCKS,
 			orig_inode->i_ino, donor_inode->i_ino);
 		return -EINVAL;
 	}
