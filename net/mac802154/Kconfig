@@ -14,4 +14,3 @@ config MAC802154
 	  If you plan to use HardMAC IEEE 802.15.4 devices, you can
 	  say N here. Alternatievly you can say M to compile it as
 	  module.
-

@@ -21,6 +21,7 @@
 #include <linux/kernel.h>
 #include <net/netlink.h>
 #include <linux/nl802154.h>
+#include <net/wpan-phy.h>
 
 #define NLA_HW_ADDR NLA_U64
 
@@ -52,6 +53,6 @@ const struct nla_policy ieee802154_policy[IEEE802154_ATTR_MAX + 1] = {
 	[IEEE802154_ATTR_CHANNELS] = { .type = NLA_U32, },
 	[IEEE802154_ATTR_DURATION] = { .type = NLA_U8, },
 	[IEEE802154_ATTR_ED_LIST] = { .len = 27 },
-	[IEEE802154_ATTR_CHANNEL_PAGE_LIST] = { .len = 32 * 4, },
+	[IEEE802154_ATTR_CHANNEL_PAGE_LIST] = { .len = WPAN_NUM_PAGES * 4, },
 };
 

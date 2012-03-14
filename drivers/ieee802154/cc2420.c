@@ -85,7 +85,8 @@ struct cc2420_local {
 	struct work_struct fifop_irqwork;
 	struct work_struct sfd_irqwork;
 	spinlock_t lock;
-	unsigned irq_disabled:1;/* P:lock */
+	unsigned fifop_irq_disabled:1;/* P:lock */
+	unsigned sfd_irq_disabled:1;/* P:lock */
 	unsigned is_tx:1;		/* P:lock */
 
 	struct completion tx_complete;
@@ -406,6 +407,7 @@ static int cc2420_rx(struct cc2420_local *lp)
 {
 	u8 len = 128;
 	u8 lqi = 0; /* link quality */
+	u8 fcs = 0;
 	int rc;
 	struct sk_buff *skb;
 
@@ -415,6 +417,14 @@ static int cc2420_rx(struct cc2420_local *lp)
 
 	rc = cc2420_read_rxfifo(lp, skb_put(skb, len), &len, &lqi);
 	if (len < 2) {
+		kfree_skb(skb);
+		return -EINVAL;
+	}
+
+	/* Check FCS flag */
+	fcs = skb->data[len-1];
+	if (!(fcs >> 7)) {
+		dev_dbg(&lp->spi->dev, "Received packet with wrong FCS; ingnore.\n");
 		kfree_skb(skb);
 		return -EINVAL;
 	}
@@ -440,10 +450,20 @@ cc2420_set_hw_addr_filt(struct ieee802154_dev *dev,
 
 	might_sleep();
 
-	if (changed & IEEE802515_IEEEADDR_CHANGED)
+	if (changed & IEEE802515_IEEEADDR_CHANGED) {
+		u8 ieee_addr[8];
+		ieee_addr[0] = filt->ieee_addr[7];
+		ieee_addr[1] = filt->ieee_addr[6];
+		ieee_addr[2] = filt->ieee_addr[5];
+		ieee_addr[3] = filt->ieee_addr[4];
+		ieee_addr[4] = filt->ieee_addr[3];
+		ieee_addr[5] = filt->ieee_addr[2];
+		ieee_addr[6] = filt->ieee_addr[1];
+		ieee_addr[7] = filt->ieee_addr[0];
 		cc2420_write_ram(lp, CC2420_RAM_IEEEADR,
 						 IEEE802154_ALEN,
-						 filt->ieee_addr);
+						 ieee_addr);
+	}
 
 	if (changed & IEEE802515_SADDR_CHANGED) {
 		u8 short_addr[2];
@@ -470,7 +490,7 @@ cc2420_set_hw_addr_filt(struct ieee802154_dev *dev,
 		else
 			reg &= ~(1 << CC2420_MDMCTRL0_PANCRD);
 		cc2420_write_16_bit_reg_partial(lp, CC2420_MDMCTRL0,
-										reg, 1 << CC2420_MDMCTRL0_PANCRD);
+						reg, 1 << CC2420_MDMCTRL0_PANCRD);
 	}
 
 	return 0;
@@ -529,7 +549,7 @@ static int cc2420_register(struct cc2420_local *lp)
 
 	/* We do support only 2.4 Ghz */
 	lp->dev->phy->channels_supported[0] = 0x7FFF800;
-	lp->dev->flags = IEEE802154_HW_OMIT_CKSUM;
+	lp->dev->flags = IEEE802154_HW_OMIT_CKSUM | IEEE802154_HW_AACK;
 
 	dev_dbg(&lp->spi->dev, "registered cc2420\n");
 	ret = ieee802154_register_device(lp->dev);
@@ -550,22 +570,18 @@ static void cc2420_unregister(struct cc2420_local *lp)
 	ieee802154_free_device(lp->dev);
 }
 
-static irqreturn_t cc2420_isr(int irq, void *data)
+static irqreturn_t cc2420_fifop_isr(int irq, void *data)
 {
 	struct cc2420_local *lp = data;
 
 	spin_lock(&lp->lock);
-	if (!lp->irq_disabled) {
+	if (!lp->fifop_irq_disabled) {
 		disable_irq_nosync(irq);
-		lp->irq_disabled = 1;
+		lp->fifop_irq_disabled = 1;
 	}
 	spin_unlock(&lp->lock);
 
-	if (irq == lp->sfd_irq)
-		schedule_work(&lp->sfd_irqwork);
-
-	if (irq == lp->fifop_irq)
-		schedule_work(&lp->fifop_irqwork);
+	schedule_work(&lp->fifop_irqwork);
 
 	return IRQ_HANDLED;
 }
@@ -587,11 +603,27 @@ static void cc2420_fifop_irqwork(struct work_struct *work)
 	cc2420_cmd_strobe(lp, CC2420_SFLUSHRX);
 
 	spin_lock_irqsave(&lp->lock, flags);
-	if (lp->irq_disabled) {
-		lp->irq_disabled = 0;
+	if (lp->fifop_irq_disabled) {
+		lp->fifop_irq_disabled = 0;
 		enable_irq(lp->fifop_irq);
 	}
 	spin_unlock_irqrestore(&lp->lock, flags);
+}
+
+static irqreturn_t cc2420_sfd_isr(int irq, void *data)
+{
+	struct cc2420_local *lp = data;
+
+	spin_lock(&lp->lock);
+	if (!lp->sfd_irq_disabled) {
+		disable_irq_nosync(irq);
+		lp->sfd_irq_disabled = 1;
+	}
+	spin_unlock(&lp->lock);
+
+	schedule_work(&lp->sfd_irqwork);
+
+	return IRQ_HANDLED;
 }
 
 static void cc2420_sfd_irqwork(struct work_struct *work)
@@ -612,8 +644,8 @@ static void cc2420_sfd_irqwork(struct work_struct *work)
 	}
 
 	spin_lock_irqsave(&lp->lock, flags);
-	if (lp->irq_disabled) {
-		lp->irq_disabled = 0;
+	if (lp->sfd_irq_disabled) {
+		lp->sfd_irq_disabled = 0;
 		enable_irq(lp->sfd_irq);
 	}
 	spin_unlock_irqrestore(&lp->lock, flags);
@@ -763,7 +795,7 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 	lp->sfd_irq = gpio_to_irq(lp->pdata->sfd);
 
 	ret = request_irq(lp->fifop_irq,
-					  cc2420_isr,
+					  cc2420_fifop_isr,
 					  IRQF_TRIGGER_RISING | IRQF_SHARED,
 					  dev_name(&spi->dev),
 					  lp);
@@ -773,7 +805,7 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 	}
 
 	ret = request_irq(lp->sfd_irq,
-					  cc2420_isr,
+					  cc2420_sfd_isr,
 					  IRQF_TRIGGER_FALLING,
 					  dev_name(&spi->dev),
 					  lp);
@@ -781,6 +813,10 @@ static int __devinit cc2420_probe(struct spi_device *spi)
 		dev_err(&spi->dev, "could not get sfd irq?\n");
 		goto err_free_sfd_irq;
 	}
+
+	dev_dbg(&lp->spi->dev, "Enable hardware AUTO ACK\n");
+	cc2420_write_16_bit_reg_partial(lp, CC2420_MDMCTRL0, 1 <<
+					CC2420_MDMCTRL0_AUTOACK, 1 << CC2420_MDMCTRL0_AUTOACK);
 
 	dev_info(&lp->spi->dev, "Set fifo threshold to 127\n");
 	cc2420_write_16_bit_reg_partial(lp, CC2420_IOCFG0, 127, CC2420_FIFOP_THR_MASK);
