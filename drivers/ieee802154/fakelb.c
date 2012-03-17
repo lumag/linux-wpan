@@ -29,22 +29,22 @@
 #include <net/mac802154.h>
 #include <net/wpan-phy.h>
 
-struct fake_dev_priv {
+struct fakelb_dev_priv {
 	struct ieee802154_dev *dev;
 
 	struct list_head list;
-	struct fake_priv *fake;
+	struct fakelb_priv *fake;
 
-	unsigned int working:1;
+	bool working;
 };
 
-struct fake_priv {
+struct fakelb_priv {
 	struct list_head list;
 	rwlock_t lock;
 };
 
 static int
-hw_ed(struct ieee802154_dev *dev, u8 *level)
+fakelb_hw_ed(struct ieee802154_dev *dev, u8 *level)
 {
 	pr_debug("%s\n", __func__);
 	might_sleep();
@@ -54,7 +54,7 @@ hw_ed(struct ieee802154_dev *dev, u8 *level)
 }
 
 static int
-hw_channel(struct ieee802154_dev *dev, int page, int channel)
+fakelb_hw_channel(struct ieee802154_dev *dev, int page, int channel)
 {
 	pr_debug("%s %d\n", __func__, channel);
 	might_sleep();
@@ -64,7 +64,7 @@ hw_channel(struct ieee802154_dev *dev, int page, int channel)
 }
 
 static void
-hw_deliver(struct fake_dev_priv *priv, struct sk_buff *skb)
+fakelb_hw_deliver(struct fakelb_dev_priv *priv, struct sk_buff *skb)
 {
 	struct sk_buff *newskb;
 
@@ -77,24 +77,24 @@ hw_deliver(struct fake_dev_priv *priv, struct sk_buff *skb)
 }
 
 static int
-hw_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
+fakelb_hw_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 {
-	struct fake_dev_priv *priv = dev->priv;
-	struct fake_priv *fake = priv->fake;
+	struct fakelb_dev_priv *priv = dev->priv;
+	struct fakelb_priv *fake = priv->fake;
 
 	might_sleep();
 
 	read_lock_bh(&fake->lock);
 	if (priv->list.next == priv->list.prev) {
 		/* we are the only one device */
-		hw_deliver(priv, skb);
+		fakelb_hw_deliver(priv, skb);
 	} else {
-		struct fake_dev_priv *dp;
+		struct fakelb_dev_priv *dp;
 		list_for_each_entry(dp, &priv->fake->list, list)
 			if (dp != priv &&
 			    dp->dev->phy->current_channel ==
 					priv->dev->phy->current_channel)
-				hw_deliver(dp, skb);
+				fakelb_hw_deliver(dp, skb);
 	}
 	read_unlock_bh(&fake->lock);
 
@@ -102,8 +102,8 @@ hw_xmit(struct ieee802154_dev *dev, struct sk_buff *skb)
 }
 
 static int
-hw_start(struct ieee802154_dev *dev) {
-	struct fake_dev_priv *priv = dev->priv;
+fakelb_hw_start(struct ieee802154_dev *dev) {
+	struct fakelb_dev_priv *priv = dev->priv;
 
 	if (priv->working)
 		return -EBUSY;
@@ -114,28 +114,28 @@ hw_start(struct ieee802154_dev *dev) {
 }
 
 static void
-hw_stop(struct ieee802154_dev *dev) {
-	struct fake_dev_priv *priv = dev->priv;
+fakelb_hw_stop(struct ieee802154_dev *dev) {
+	struct fakelb_dev_priv *priv = dev->priv;
 
 	priv->working = 0;
 }
 
-static struct ieee802154_ops fake_ops = {
+static struct ieee802154_ops fakelb_ops = {
 	.owner = THIS_MODULE,
-	.xmit = hw_xmit,
-	.ed = hw_ed,
-	.set_channel = hw_channel,
-	.start = hw_start,
-	.stop = hw_stop,
+	.xmit = fakelb_hw_xmit,
+	.ed = fakelb_hw_ed,
+	.set_channel = fakelb_hw_channel,
+	.start = fakelb_hw_start,
+	.stop = fakelb_hw_stop,
 };
 
-static int ieee802154fake_add_priv(struct device *dev, struct fake_priv *fake)
+static int ieee802154fakelb_add_priv(struct device *dev, struct fakelb_priv *fake)
 {
-	struct fake_dev_priv *priv;
+	struct fakelb_dev_priv *priv;
 	int err = -ENOMEM;
 	struct ieee802154_dev *ieee;
 
-	ieee = ieee802154_alloc_device(sizeof(*priv), &fake_ops);
+	ieee = ieee802154_alloc_device(sizeof(*priv), &fakelb_ops);
 	if (!dev)
 		goto err_alloc_dev;
 
@@ -195,7 +195,7 @@ err_alloc_dev:
 	return err;
 }
 
-static void ieee802154fake_del_priv(struct fake_dev_priv *priv)
+static void ieee802154fakelb_del_priv(struct fakelb_dev_priv *priv)
 {
 	write_lock_bh(&priv->fake->lock);
 	list_del(&priv->list);
@@ -210,10 +210,10 @@ adddev_store(struct device *dev, struct device_attribute *attr,
 	const char *buf, size_t n)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct fake_priv *priv = platform_get_drvdata(pdev);
+	struct fakelb_priv *priv = platform_get_drvdata(pdev);
 	int err;
 
-	err = ieee802154fake_add_priv(dev, priv);
+	err = ieee802154fakelb_add_priv(dev, priv);
 	if (err)
 		return err;
 	return n;
@@ -221,35 +221,35 @@ adddev_store(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR(adddev, 0200, NULL, adddev_store);
 
-static struct attribute *fake_attrs[] = {
+static struct attribute *fakelb_attrs[] = {
 	&dev_attr_adddev.attr,
 	NULL,
 };
 
-static struct attribute_group fake_group = {
+static struct attribute_group fakelb_group = {
 	.name	= NULL /* fake */,
-	.attrs	= fake_attrs,
+	.attrs	= fakelb_attrs,
 };
 
 
-static int __devinit ieee802154fake_probe(struct platform_device *pdev)
+static int __devinit ieee802154fakelb_probe(struct platform_device *pdev)
 {
-	struct fake_priv *priv;
-	struct fake_dev_priv *dp;
+	struct fakelb_priv *priv;
+	struct fakelb_dev_priv *dp;
 
 	int err = -ENOMEM;
-	priv = kzalloc(sizeof(struct fake_priv), GFP_KERNEL);
+	priv = kzalloc(sizeof(struct fakelb_priv), GFP_KERNEL);
 	if (!priv)
 		goto err_alloc;
 
 	INIT_LIST_HEAD(&priv->list);
 	rwlock_init(&priv->lock);
 
-	err = sysfs_create_group(&pdev->dev.kobj, &fake_group);
+	err = sysfs_create_group(&pdev->dev.kobj, &fakelb_group);
 	if (err)
 		goto err_grp;
 
-	err = ieee802154fake_add_priv(&pdev->dev, priv);
+	err = ieee802154fakelb_add_priv(&pdev->dev, priv);
 	if (err < 0)
 		goto err_slave;
 
@@ -259,53 +259,51 @@ static int __devinit ieee802154fake_probe(struct platform_device *pdev)
 
 err_slave:
 	list_for_each_entry(dp, &priv->list, list)
-		ieee802154fake_del_priv(dp);
-	sysfs_remove_group(&pdev->dev.kobj, &fake_group);
+		ieee802154fakelb_del_priv(dp);
+	sysfs_remove_group(&pdev->dev.kobj, &fakelb_group);
 err_grp:
 	kfree(priv);
 err_alloc:
 	return err;
 }
 
-static int __devexit ieee802154fake_remove(struct platform_device *pdev)
+static int __devexit ieee802154fakelb_remove(struct platform_device *pdev)
 {
-	struct fake_priv *priv = platform_get_drvdata(pdev);
-	struct fake_dev_priv *dp, *temp;
+	struct fakelb_priv *priv = platform_get_drvdata(pdev);
+	struct fakelb_dev_priv *dp, *temp;
 
 	list_for_each_entry_safe(dp, temp, &priv->list, list)
-		ieee802154fake_del_priv(dp);
-	sysfs_remove_group(&pdev->dev.kobj, &fake_group);
+		ieee802154fakelb_del_priv(dp);
+	sysfs_remove_group(&pdev->dev.kobj, &fakelb_group);
 	kfree(priv);
 	return 0;
 }
 
-static struct platform_device *ieee802154fake_dev;
+static struct platform_device *ieee802154fakelb_dev;
 
-static struct platform_driver ieee802154fake_driver = {
-	.probe = ieee802154fake_probe,
-	.remove = __devexit_p(ieee802154fake_remove),
+static struct platform_driver ieee802154fakelb_driver = {
+	.probe = ieee802154fakelb_probe,
+	.remove = __devexit_p(ieee802154fakelb_remove),
 	.driver = {
 			.name = "ieee802154fakelb",
 			.owner = THIS_MODULE,
 	},
 };
 
-static __init int fake_init(void)
+static __init int fakelb_init(void)
 {
-	ieee802154fake_dev = platform_device_register_simple(
+	ieee802154fakelb_dev = platform_device_register_simple(
 			"ieee802154fakelb", -1, NULL, 0);
-	return platform_driver_register(&ieee802154fake_driver);
+	return platform_driver_register(&ieee802154fakelb_driver);
 }
 
-static __exit void fake_exit(void)
+static __exit void fakelb_exit(void)
 {
-	platform_driver_unregister(&ieee802154fake_driver);
-	platform_device_unregister(ieee802154fake_dev);
+	platform_driver_unregister(&ieee802154fakelb_driver);
+	platform_device_unregister(ieee802154fakelb_dev);
 }
 
-module_init(fake_init);
-module_exit(fake_exit);
+module_init(fakelb_init);
+module_exit(fakelb_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Dmitry Eremin-Solenikov, Sergey Lapin");
-
-
