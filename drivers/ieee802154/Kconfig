@@ -30,22 +30,3 @@ config IEEE802154_FAKELB
 
 	  This driver can also be built as a module. To do so say M here.
 	  The module will be called 'fakelb'.
-
-config IEEE802154_SERIAL
-	depends on IEEE802154_DRIVERS && MAC802154
-	tristate "Simple LR-WPAN UART driver"
-
-config IEEE802154_AT86RF230
-	depends on IEEE802154_DRIVERS && MAC802154
-	tristate "AT86RF230 transceiver driver"
-	depends on SPI
-
-config IEEE802154_CC2420
-       tristate "CC2420 driver"
-       depends on SPI
-       depends on  IEEE802154_DRIVERS
-
-config IEEE802154_ADF7242
-       tristate "ADF7242 transceiver driver"
-       depends on IEEE802154_DRIVERS && MAC802154
-       depends on SPI
