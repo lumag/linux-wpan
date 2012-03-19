@@ -27,7 +27,6 @@
 #include <net/wpan-phy.h>
 
 #include "mac802154.h"
-#include "mib.h"
 
 int mac802154_slave_open(struct net_device *dev)
 {

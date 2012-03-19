@@ -29,9 +29,9 @@
 #include <net/ieee802154.h>
 #include <net/ieee802154_netdev.h>
 #include <net/nl802154.h>
+#include <net/wpan-phy.h>
 
 #include "mac802154.h"
-#include "mib.h"
 
 struct wpan_phy *mac802154_get_phy(const struct net_device *dev)
 {

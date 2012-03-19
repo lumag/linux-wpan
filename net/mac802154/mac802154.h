@@ -123,4 +123,8 @@ int mac802154_slave_close(struct net_device *dev);
 
 netdev_tx_t mac802154_tx(struct mac802154_priv *priv, struct sk_buff *skb,
 		u8 page, u8 chan);
+
+/* MIB callbacks */
+void mac802154_dev_set_ieee_addr(struct net_device *dev);
+
 #endif
