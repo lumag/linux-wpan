@@ -17,6 +17,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/netdevice.h>
 #include <linux/if_arp.h>
 #include <linux/nl802154.h>

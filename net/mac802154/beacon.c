@@ -151,7 +151,8 @@ int mac802154_send_beacon(struct net_device *dev,
 
 	BUG_ON(dev->type != ARPHRD_IEEE802154);
 
-	skb = alloc_skb(LL_ALLOCATED_SPACE(dev) + len, GFP_ATOMIC);
+	skb = alloc_skb(LL_RESERVED_SPACE(dev) + len + dev->needed_tailroom,
+			GFP_ATOMIC);
 	if (!skb)
 		return -ENOMEM;
 

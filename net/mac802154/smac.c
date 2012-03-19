@@ -105,7 +105,7 @@ void mac802154_smac_setup(struct net_device *dev)
 	struct mac802154_sub_if_data *priv;
 
 	dev->addr_len		= 0;
-	dev->features		= NETIF_F_NO_CSUM;
+	dev->features		= NETIF_F_HW_CSUM;
 	dev->hard_header_len	= 2;
 	dev->needed_tailroom	= 2; /* FCS */
 	dev->mtu		= 123; /* 127 - 2 (FCS) - 2 (header) */
